@@ -1,3 +1,4 @@
+import os
 from conans import ConanFile, CMake, tools
 
 
@@ -16,12 +17,12 @@ class MrptConan(ConanFile):
         'flann/[>=1.6.8]@3dri/stable',
         'vtk/[>=5.6.1]@3dri/stable',
         'qhull/2015.2@3dri/stable',
-        # glut
-        'opencv/[>3.1.0]@3dri/stable',
+        'freeglut/[>=3.0.0]@3dri/stable',
+        'opencv/[>=3.1.0]@3dri/stable',
         'gtest/[>=1.8.0]@lasote/stable',
-        'assimp/[>3.1]@3dri/stable',
-        'zlib/[>1.2.11]@conan/stable',
-        'pcl/[>1.7.0]@3dri/stable',
+        'assimp/[>=3.1]@3dri/stable',
+        'zlib/[>=1.2.11]@conan/stable',
+        'pcl/[>=1.7.0]@3dri/stable',
     )
     options = {"shared": [True, False]}
     default_options = "shared=False"
@@ -64,13 +65,12 @@ class MrptConan(ConanFile):
             ]
 
             # Additional
-            # (removed from here because we provide our own: zlib1g-dev libassimp-dev
+            # (removed from here because we provide our own: zlib1g-dev libassimp-dev, freeglut3-dev
             pack_names = [
-                'libftdi-dev', 'freeglut3-dev', '',
-                'libusb-1.0-0-dev', 'libudev-dev', 'libfreenect-dev',
-                'libdc1394-22-dev', 'libavformat-dev', 'libswscale-dev',
-                'libjpeg-dev', 'libsuitesparse-dev', 'libpcap-dev',
-                'liboctomap-dev'
+                'libftdi-dev', 'libusb-1.0-0-dev', 'libudev-dev',
+                'libfreenect-dev', 'libdc1394-22-dev', 'libavformat-dev',
+                'libswscale-dev', 'libjpeg-dev', 'libsuitesparse-dev',
+                'libpcap-dev', 'liboctomap-dev'
             ]
 
             if self.settings.arch == "x86":
@@ -84,33 +84,34 @@ class MrptConan(ConanFile):
             installer.update() # Update the package database
             installer.install(" ".join(pack_names)) # Install the package
 
-    def configure(self):
-        self.options['boost'].shared = True
+    # def configure(self):
+    #     self.options['boost'].shared = True
 
     def build(self):
 
         args = []
 
         args.append('-DCMAKE_CXX_FLAGS="-fPIC"')
-        args.append('-DCMAKE_INSTALL_PREFIX:PATH=%s'self.package_folder)
+        args.append('-DCMAKE_INSTALL_PREFIX:PATH=%s'%self.package_folder)
         # args.append('-DCMAKE_BUILD_TYPE=${bld_type}')
         args.append('-DOpenCV_DIR:PATH=%s'%self.deps_cpp_info['opencv'].rootpath) # ${libs}/OpenCV/${OPENCV_VERSION}/share/OpenCV
-        args.append('-DPCL_DIR:PATH=%s'self.deps_cpp_info['pcl'].rootpath) # ${libs}/PCL/${PCL_VERSION}/share/pcl-${short_pcl_version}')
-        args.append('-DEIGEN_ROOT:PATH=%s'$self.deps_cpp_info['eigen'].rootpath) # ${libs}/Eigen/${EIGEN_VERSION}')
+        args.append('-DPCL_DIR:PATH=%s'%self.deps_cpp_info['pcl'].rootpath) # ${libs}/PCL/${PCL_VERSION}/share/pcl-${short_pcl_version}')
+        args.append('-DEIGEN_ROOT:PATH=%s'%self.deps_cpp_info['eigen'].rootpath) # ${libs}/Eigen/${EIGEN_VERSION}')
         args.append('-DEIGEN3_DIR:PATH=%s/share/eigen3/cmake'%self.deps_cpp_info['eigen'].rootpath)
         args.append('-DEIGEN_INCLUDE_DIR:PATH=%s/include/eigen3'%self.deps_cpp_info['eigen'].rootpath)
-        args.append('-DBOOST_ROOT=%s'self.deps_cpp_info['boost'])
+        # args.append('-DEIGEN_INCLUDE_DIR:PATH=%s/include/eigen3'%self.deps_cpp_info['eigen'].rootpath)
+        args.append('-DBOOST_ROOT=%s'%self.deps_cpp_info['Boost.Core'])
         args.append('-DFLANN_ROOT=%s'%self.deps_cpp_info['flann'].rootpath)
-        args.append('-DEIGEN_INCLUDE_DIR:PATH=%s/include/eigen3'%self.deps_cpp_info['eigen'].rootpath)
-        args.append('-DFLANN_INCLUDE_DIR:PATH=%s/include'%self.deps_cpp_info['flann'].rootpath)
+        # args.append('-DFLANN_INCLUDE_DIR:PATH=%s/include'%self.deps_cpp_info['flann'].rootpath)
         args.append('-DVTK_DIR=%s'%self.deps_cpp_info['vtk'].rootpath) # ${libs}/VTK/${VTK_VERSION}/${bld_type}/lib/cmake/vtk-${short_vtk_version}/')
-        args.append('-DQHULL_INCLUDE_DIR:PATH=%s/include'%self.deps_cpp_info['qhull'].rootpath)
-        args.append('-DQHULL_LIBRARY:FILEPATH=%s/lib/libqhull.so'%self.deps_cpp_info['qhull'].rootpath)
+        args.append('-DQHULL_ROOT:PATH=%s'%self.deps_cpp_info['qhull'].rootpath)
+        # args.append('-DQHULL_INCLUDE_DIR:PATH=%s/include'%self.deps_cpp_info['qhull'].rootpath)
+        # args.append('-DQHULL_LIBRARY:FILEPATH=%s/lib/libqhull.so'%self.deps_cpp_info['qhull'].rootpath)
         # args.append('-DQHULL_LIBRARY_DEBUG=${libs}/qhull/${QHULL_VERSION}/lib/libqhull_d.so')
         args.append('-DGLUT_INCLUDE_DIR=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include'))
         args.append('-DGLUT_glut_LIBRARY=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so'))
-        args.append('-DZLIB_INCLUDE_DIR=%s'%os.path.join(seld.deps_cpp_info['zlib'].rootpath, 'include'))
-        args.append('-DZLIB_LIBRARY_RELEASE=%s'%os.path.join(seld.deps_cpp_info['zlib'].rootpath, 'include', 'libz.so' if self.settings.os == 'Linux' else 'libz.dll'))
+        args.append('-DZLIB_INCLUDE_DIR=%s'%os.path.join(self.deps_cpp_info['zlib'].rootpath, 'include'))
+        args.append('-DZLIB_LIBRARY_RELEASE=%s'%os.path.join(self.deps_cpp_info['zlib'].rootpath, 'include', 'libz.so' if self.settings.os == 'Linux' else 'libz.dll'))
         args.append('-DGTEST_ROOT=%s'%self.deps_cpp_info['gtest'].rootpath)
 
         cmake = CMake(self)
