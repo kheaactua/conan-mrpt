@@ -19,7 +19,7 @@ class MrptConan(ConanFile):
         # glut
         # opencv
         'gtest/[>=1.8.0]@lasote/stable',
-        # assimp
+        'assimp/[>3.1]@3dri/stable',
         'zlib/[>1.2.11]@conan/stable',
         'pcl/[>1.7.0]@3dri/stable',
     )
