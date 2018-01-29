@@ -17,7 +17,7 @@ class MrptConan(ConanFile):
         'vtk/[>=5.6.1]@3dri/stable',
         'qhull/2015.2@3dri/stable',
         # glut
-        # opencv
+        'opencv/[>3.1.0]@3dri/stable',
         'gtest/[>=1.8.0]@lasote/stable',
         'assimp/[>3.1]@3dri/stable',
         'zlib/[>1.2.11]@conan/stable',
@@ -35,6 +35,8 @@ class MrptConan(ConanFile):
         hashes = {
             '1.5.5.tar.gz': '3f74fecfe1a113c350332122553e1685',
             '1.5.5.zip':    '48c188d70a3844ab49036a05cf5786fd',
+            '1.4.0.tar.gz': 'ca36688b2512a21dac27aadca34153ce',
+            '1.4.0.zip':    'db58a092e984aeb95666477339b832f0',
         }
 
         tools.download(url=archive_url, filename=archive)
