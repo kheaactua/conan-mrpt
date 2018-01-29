@@ -34,7 +34,7 @@ class MrptConan(ConanFile):
 
         hashes = {
             '1.5.5.tar.gz': '3f74fecfe1a113c350332122553e1685',
-            '1.5.5.zip:     '48c188d70a3844ab49036a05cf5786fd',
+            '1.5.5.zip':    '48c188d70a3844ab49036a05cf5786fd',
         }
 
         tools.download(url=archive_url, filename=archive)
