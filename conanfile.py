@@ -1,5 +1,6 @@
-import os
+import os, sys, shutil
 from conans import ConanFile, CMake, tools
+from conans.errors import ConanException
 
 
 class MrptConan(ConanFile):
@@ -11,12 +12,8 @@ class MrptConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake"
     requires = (
-        'Boost.Thread/[>=1.56]@bincrafters/stable',
-        'Boost.System/[>=1.56]@bincrafters/stable',
         'eigen/[>=3.0.0]@3dri/stable',
-        'flann/[>=1.6.8]@3dri/stable',
         'vtk/[>=5.6.1]@3dri/stable',
-        'qhull/2015.2@3dri/stable',
         'freeglut/[>=3.0.0]@3dri/stable',
         'opencv/[>=3.1.0]@3dri/stable',
         'gtest/[>=1.8.0]@lasote/stable',
@@ -25,12 +22,16 @@ class MrptConan(ConanFile):
         'pcl/[>=1.7.0]@3dri/stable',
     )
     options = {"shared": [True, False]}
-    default_options = "shared=False"
+    default_options = "shared=True"
+
+    def configure(self):
+        self.options['opencv'].shared = self.options.shared
+        self.options['zlib'].shared = self.options.shared
 
     def source(self):
 
-        ext = "tar.xz" if self.settings.os == "Linux" else "zip"
-        archive=f'mrpt-{self.version}.{ext}'
+        ext = "tar.gz" if self.settings.os == "Linux" else "zip"
+        archive=f'{self.version}.{ext}'
         archive_url=f'https://github.com/MRPT/mrpt/archive/{archive}'
 
         hashes = {
@@ -47,16 +48,12 @@ class MrptConan(ConanFile):
             self.output.error(e)
             sys.exit(-1)
 
-        # Extract it
-        if ext == 'tar.xz':
-            self.run(f"tar xf {archive}")
-        else:
-            tools.unzip(archive)
+        tools.unzip(archive)
         shutil.move(f'mrpt-{self.version}', self.name)
 
     def system_requirements(self):
         pack_names = None
-        if os_info.linux_distro == "ubuntu":
+        if tools.os_info.linux_distro == "ubuntu":
             # Minimal requirements
             # (removed from here because we provide our own: libopencv-dev,
             # libeigen3-dev, libgtest-dev)
@@ -65,12 +62,14 @@ class MrptConan(ConanFile):
             ]
 
             # Additional
-            # (removed from here because we provide our own: zlib1g-dev libassimp-dev, freeglut3-dev
+            # (removed from here because we provide our own: zlib1g-dev
+            # libassimp-dev, freeglut3-dev)  Also, removed liboctomap-dev
+            # because it doesn't seem to exists.
             pack_names = [
                 'libftdi-dev', 'libusb-1.0-0-dev', 'libudev-dev',
                 'libfreenect-dev', 'libdc1394-22-dev', 'libavformat-dev',
                 'libswscale-dev', 'libjpeg-dev', 'libsuitesparse-dev',
-                'libpcap-dev', 'liboctomap-dev'
+                'libpcap-dev',
             ]
 
             if self.settings.arch == "x86":
@@ -80,47 +79,67 @@ class MrptConan(ConanFile):
                 pack_names = full_pack_names
 
         if pack_names:
-            installer = SystemPackageTool()
+            installer = tools.SystemPackageTool()
             installer.update() # Update the package database
             installer.install(" ".join(pack_names)) # Install the package
 
-    # def configure(self):
-    #     self.options['boost'].shared = True
-
     def build(self):
+
+        vtk_major    = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
+        pcl_major    = '.'.join(self.deps_cpp_info['pcl'].version.split('.')[:2])
 
         args = []
 
+        if self.options.shared:
+            args.append('-DBUILD_SHARED_LIBS:BOOL=TRUE')
+        args.append('-DBUILD_EXAMPLES:BOOL=FALSE')
+        args.append('-DMRPT_HAS_ASIAN_FONTS:BOOL=FALSE')
         args.append('-DCMAKE_CXX_FLAGS="-fPIC"')
-        args.append('-DCMAKE_INSTALL_PREFIX:PATH=%s'%self.package_folder)
-        # args.append('-DCMAKE_BUILD_TYPE=${bld_type}')
-        args.append('-DOpenCV_DIR:PATH=%s'%self.deps_cpp_info['opencv'].rootpath) # ${libs}/OpenCV/${OPENCV_VERSION}/share/OpenCV
-        args.append('-DPCL_DIR:PATH=%s'%self.deps_cpp_info['pcl'].rootpath) # ${libs}/PCL/${PCL_VERSION}/share/pcl-${short_pcl_version}')
-        args.append('-DEIGEN_ROOT:PATH=%s'%self.deps_cpp_info['eigen'].rootpath) # ${libs}/Eigen/${EIGEN_VERSION}')
-        args.append('-DEIGEN3_DIR:PATH=%s/share/eigen3/cmake'%self.deps_cpp_info['eigen'].rootpath)
-        args.append('-DEIGEN_INCLUDE_DIR:PATH=%s/include/eigen3'%self.deps_cpp_info['eigen'].rootpath)
-        # args.append('-DEIGEN_INCLUDE_DIR:PATH=%s/include/eigen3'%self.deps_cpp_info['eigen'].rootpath)
-        args.append('-DBOOST_ROOT=%s'%self.deps_cpp_info['Boost.Core'])
-        args.append('-DFLANN_ROOT=%s'%self.deps_cpp_info['flann'].rootpath)
-        # args.append('-DFLANN_INCLUDE_DIR:PATH=%s/include'%self.deps_cpp_info['flann'].rootpath)
-        args.append('-DVTK_DIR=%s'%self.deps_cpp_info['vtk'].rootpath) # ${libs}/VTK/${VTK_VERSION}/${bld_type}/lib/cmake/vtk-${short_vtk_version}/')
-        args.append('-DQHULL_ROOT:PATH=%s'%self.deps_cpp_info['qhull'].rootpath)
-        # args.append('-DQHULL_INCLUDE_DIR:PATH=%s/include'%self.deps_cpp_info['qhull'].rootpath)
-        # args.append('-DQHULL_LIBRARY:FILEPATH=%s/lib/libqhull.so'%self.deps_cpp_info['qhull'].rootpath)
-        # args.append('-DQHULL_LIBRARY_DEBUG=${libs}/qhull/${QHULL_VERSION}/lib/libqhull_d.so')
+        args.append('-DOpenCV_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['opencv'].rootpath, 'share', 'OpenCV'))
+        args.append('-DVTK_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}'))
         args.append('-DGLUT_INCLUDE_DIR=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include'))
         args.append('-DGLUT_glut_LIBRARY=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so'))
+
         args.append('-DZLIB_INCLUDE_DIR=%s'%os.path.join(self.deps_cpp_info['zlib'].rootpath, 'include'))
-        args.append('-DZLIB_LIBRARY_RELEASE=%s'%os.path.join(self.deps_cpp_info['zlib'].rootpath, 'include', 'libz.so' if self.settings.os == 'Linux' else 'libz.dll'))
-        args.append('-DGTEST_ROOT=%s'%self.deps_cpp_info['gtest'].rootpath)
+        if self.options.shared:
+            libz = 'libz.so' if self.settings.os == 'Linux' else 'libz.dll'
+        else:
+            libz = 'libz.a' if self.settings.os == 'Linux' else 'libz.lib'
+        args.append('-DZLIB_LIBRARY_RELEASE=%s'%os.path.join(self.deps_cpp_info['zlib'].rootpath, 'lib', libz))
+
 
         cmake = CMake(self)
-        cmake.configure(source_folder="hello")
+        cmake.configure(source_folder=self.name, args=args)
         cmake.build()
 
-        # Fix up the CMake Find Script PCL generated
+        # Fix up the CMake Find Script MRPT generated
         self.output.info('Inserting Conan variables in to the PCL CMake Find script.')
-        self.fixFindPackage(cmake.build_folder, vtk_cmake_rel_dir)
+
+        cmake.install()
+
+    def fixFindPackage(self, path):
+        """
+        Insert some variables into the MRPT find script generated in the
+        build so that we can use it in our CMake scripts
+        """
+
+        if not os.path.exists(path):
+            self.output.warn('Could not fix non-existant file: %s'%path)
+            return
+
+        with open(f'{path}/PCLConfig.cmake') as f:
+            data = f.read()
+
+        m = re.match(r"SET\(MRPT_SOURCE_DIR \"(?P<base>.*?)\"\)", data)
+        if not m:
+            self.output.warn('Could not find MRPT base directory')
+            return
+
+        data = data.replace(m.group('base'), '${CONAN_MRPT_ROOT}')
+
+        outp = open(path, 'w')
+        outp.write(data)
+
 
     def package(self):
         pass
