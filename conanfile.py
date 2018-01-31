@@ -1,4 +1,4 @@
-import os, sys, shutil
+import os, sys, shutil, re
 from conans import ConanFile, CMake, tools
 from conans.errors import ConanException
 
@@ -96,6 +96,7 @@ class MrptConan(ConanFile):
         args.append('-DMRPT_HAS_ASIAN_FONTS:BOOL=FALSE')
         args.append('-DCMAKE_CXX_FLAGS="-fPIC"')
         args.append('-DOpenCV_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['opencv'].rootpath, 'share', 'OpenCV'))
+        args.append('-DPCL_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['pcl'].rootpath, 'share', f'pcl-{pcl_major}'))
         args.append('-DVTK_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}'))
         args.append('-DGLUT_INCLUDE_DIR=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include'))
         args.append('-DGLUT_glut_LIBRARY=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so'))
@@ -107,15 +108,30 @@ class MrptConan(ConanFile):
             libz = 'libz.a' if self.settings.os == 'Linux' else 'libz.lib'
         args.append('-DZLIB_LIBRARY_RELEASE=%s'%os.path.join(self.deps_cpp_info['zlib'].rootpath, 'lib', libz))
 
+        args.append('-DBUILD_ASSIMP:BOOL=FALSE')
+        pkg_vars = {
+            'PKG_CONFIG_eigen3_PREFIX':  self.deps_cpp_info['eigen'].rootpath,
+            'PKG_CONFIG_assimp_PREFIX': self.deps_cpp_info['assimp'].rootpath,
+            'PKG_CONFIG_pcl_PREFIX':    self.deps_cpp_info['pcl'].rootpath,
+            'PKG_CONFIG_PATH': ':'.join([
+                os.path.join(self.deps_cpp_info['eigen'].rootpath, 'share', 'pkgconfig'),
+                os.path.join(self.deps_cpp_info['assimp'].rootpath, 'lib', 'pkgconfig'),
+                os.path.join(self.deps_cpp_info['pcl'].rootpath, 'lib', 'pkgconfig'),
+            ])
+        }
 
         cmake = CMake(self)
-        cmake.configure(source_folder=self.name, args=args)
-        cmake.build()
+        with tools.environment_append(pkg_vars):
+            cmake.configure(source_folder=self.name, args=args)
+            cmake.build()
 
         # Fix up the CMake Find Script MRPT generated
         self.output.info('Inserting Conan variables in to the PCL CMake Find script.')
 
         cmake.install()
+
+        self.fixFindPackage(os.path.join(self.package_folder, 'share', 'mrpt', 'MRPTConfig.cmake'))
+
 
     def fixFindPackage(self, path):
         """
@@ -127,15 +143,15 @@ class MrptConan(ConanFile):
             self.output.warn('Could not fix non-existant file: %s'%path)
             return
 
-        with open(f'{path}/PCLConfig.cmake') as f:
+        with open(path) as f:
             data = f.read()
 
-        m = re.match(r"SET\(MRPT_SOURCE_DIR \"(?P<base>.*?)\"\)", data)
+        m = re.search(r'SET.MRPT_DIR "(?P<base>.*?)(?P<type>(build|package))(?P<rest>.*?(?="))', data)
         if not m:
-            self.output.warn('Could not find MRPT base directory')
+            self.output.warn('Could not find MRPT source directory in CMake file')
             return
-
-        data = data.replace(m.group('base'), '${CONAN_MRPT_ROOT}')
+        for t in ['build', 'package']:
+            data = data.replace(m.group('base') + t + m.group('rest'), '${CONAN_MRPT_ROOT}')
 
         outp = open(path, 'w')
         outp.write(data)
