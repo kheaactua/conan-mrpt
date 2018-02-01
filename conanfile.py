@@ -16,7 +16,6 @@ class MrptConan(ConanFile):
         'vtk/[>=5.6.1]@3dri/stable',
         'freeglut/[>=3.0.0]@3dri/stable',
         'opencv/[>=3.1.0]@3dri/stable',
-        'gtest/[>=1.8.0]@lasote/stable',
         'assimp/[>=3.1]@3dri/stable',
         'zlib/[>=1.2.11]@conan/stable',
         'pcl/[>=1.7.0]@3dri/stable',
