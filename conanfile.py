@@ -12,7 +12,7 @@ class MrptConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake"
     requires = (
-        'eigen/[>=3.0.0]@3dri/stable',
+        'eigen/[>=3.2.0]@ntc/stable',
         'vtk/[>=5.6.1]@3dri/stable',
         'freeglut/[>=3.0.0]@3dri/stable',
         'opencv/[>=3.1.0]@3dri/stable',
