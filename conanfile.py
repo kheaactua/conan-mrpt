@@ -13,12 +13,12 @@ class MrptConan(ConanFile):
     generators = "cmake"
     requires = (
         'eigen/[>=3.2.0]@ntc/stable',
-        'vtk/[>=5.6.1]@3dri/stable',
-        'freeglut/[>=3.0.0]@3dri/stable',
-        'opencv/[>=3.1.0]@3dri/stable',
-        'assimp/[>=3.1]@3dri/stable',
+        'vtk/[>=5.6.1]@ntc/stable',
+        'freeglut/[>=3.0.0]@ntc/stable',
+        'opencv/[>=3.1.0]@ntc/stable',
+        'assimp/[>=3.1]@ntc/stable',
         'zlib/[>=1.2.11]@conan/stable',
-        'pcl/[>=1.7.0]@3dri/stable',
+        'pcl/[>=1.7.0]@ntc/stable',
     )
     options = {"shared": [True, False]}
     default_options = "shared=True"
