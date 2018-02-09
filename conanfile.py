@@ -109,7 +109,7 @@ class MrptConan(ConanFile):
 
         args.append('-DBUILD_ASSIMP:BOOL=FALSE')
         pkg_vars = {
-            'PKG_CONFIG_eigen3_PREFIX':  self.deps_cpp_info['eigen'].rootpath,
+            'PKG_CONFIG_eigen3_PREFIX': self.deps_cpp_info['eigen'].rootpath,
             'PKG_CONFIG_assimp_PREFIX': self.deps_cpp_info['assimp'].rootpath,
             'PKG_CONFIG_pcl_PREFIX':    self.deps_cpp_info['pcl'].rootpath,
             'PKG_CONFIG_PATH': ':'.join([
