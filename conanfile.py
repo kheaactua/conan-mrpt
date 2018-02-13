@@ -91,19 +91,29 @@ class MrptConan(ConanFile):
 
     def build(self):
 
-        vtk_major    = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
-        pcl_major    = '.'.join(self.deps_cpp_info['pcl'].version.split('.')[:2])
+        mrpt_major = int(self.version.split('.')[1])
+        vtk_major  = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
+        pcl_major  = '.'.join(self.deps_cpp_info['pcl'].version.split('.')[:2])
 
         args = []
 
         if self.options.shared:
             args.append('-DBUILD_SHARED_LIBS:BOOL=TRUE')
+        args.append('-DBOOST_ROOT:PATH=%s'%self.deps_cpp_info['boost'].rootpath)
+        args.append('-DBUILD_KINECT:BOOL=FALSE')
+        args.append('-DMRPT_HAS_ASIAN_FONTS:BOOL=FALSE')
         args.append('-DBUILD_EXAMPLES:BOOL=FALSE')
         args.append('-DMRPT_HAS_ASIAN_FONTS:BOOL=FALSE')
         args.append('-DCMAKE_CXX_FLAGS="-fPIC"')
         args.append('-DOpenCV_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['opencv'].rootpath, 'share', 'OpenCV'))
         args.append('-DPCL_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['pcl'].rootpath, 'share', f'pcl-{pcl_major}'))
         args.append('-DVTK_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}'))
+        args.append('-DBUILD_TESTING:BOOL=%s'%('TRUE' if self.options.build_tests else 'FALSE'))
+
+        # Skipping xSens (3rd and 4th gen libs for xSens MT* devices)
+        args.append('-DBUILD_XSENS_MT3:BOOL=FALSE')
+        args.append('-DBUILD_XSENS_MT4:BOOL=FALSE')
+
         args.append('-DGLUT_INCLUDE_DIR=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include'))
         args.append('-DGLUT_glut_LIBRARY=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so'))
 
@@ -119,10 +129,12 @@ class MrptConan(ConanFile):
             'PKG_CONFIG_eigen3_PREFIX': self.deps_cpp_info['eigen'].rootpath,
             'PKG_CONFIG_assimp_PREFIX': self.deps_cpp_info['assimp'].rootpath,
             'PKG_CONFIG_pcl_PREFIX':    self.deps_cpp_info['pcl'].rootpath,
+            'PKG_CONFIG_flann_PREFIX':  self.deps_cpp_info['flann'].rootpath,
             'PKG_CONFIG_PATH': ':'.join([
                 os.path.join(self.deps_cpp_info['eigen'].rootpath, 'share', 'pkgconfig'),
                 os.path.join(self.deps_cpp_info['assimp'].rootpath, 'lib', 'pkgconfig'),
                 os.path.join(self.deps_cpp_info['pcl'].rootpath, 'lib', 'pkgconfig'),
+                os.path.join(self.deps_cpp_info['flann'].rootpath, 'lib', 'pkgconfig'),
             ])
         }
 
