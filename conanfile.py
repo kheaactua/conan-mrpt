@@ -33,23 +33,26 @@ class MrptConan(ConanFile):
 
     def source(self):
 
-        ext = "tar.gz" if self.settings.os == "Linux" else "zip"
+        ext = 'tar.gz'
         archive=f'{self.version}.{ext}'
         archive_url=f'https://github.com/MRPT/mrpt/archive/{archive}'
 
         hashes = {
-            '1.5.5.tar.gz': '3f74fecfe1a113c350332122553e1685',
-            '1.5.5.zip':    '48c188d70a3844ab49036a05cf5786fd',
-            '1.4.0.tar.gz': 'ca36688b2512a21dac27aadca34153ce',
-            '1.4.0.zip':    'db58a092e984aeb95666477339b832f0',
+            '1.5.5': '3f74fecfe1a113c350332122553e1685',
+            '1.4.0': 'ca36688b2512a21dac27aadca34153ce',
+            '1.2.2': '074cc4608515927811dec3d0744c75b6',
         }
 
-        tools.download(url=archive_url, filename=archive)
-        try:
-            tools.check_md5(archive, hashes[archive])
-        except ConanException as e:
-            self.output.error(e)
-            sys.exit(-1)
+        local_copy = os.path.join('/tmp', f'mrpt-{archive}')
+        if os.path.exists(local_copy):
+            shutil.copy(local_copy, os.path.join(self.source_folder, archive))
+        else:
+            tools.download(url=archive_url, filename=archive)
+            try:
+                tools.check_md5(archive, hashes[self.version])
+            except ConanException as e:
+                self.output.error(e)
+                sys.exit(-1)
 
         tools.unzip(archive)
         shutil.move(f'mrpt-{self.version}', self.name)
