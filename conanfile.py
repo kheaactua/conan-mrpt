@@ -4,24 +4,28 @@ from conans.errors import ConanException
 
 
 class MrptConan(ConanFile):
-    name = "mrpt"
-    version = "1.5.5"
-    license = "BSD"
-    url = "http://www.mrpt.org/"
-    description = "<Description of Mrpt here>"
-    settings = "os", "compiler", "build_type", "arch"
-    generators = "cmake"
+    name = 'mrpt'
+    license = 'BSD'
+    url = 'http://www.mrpt.org/'
+    description = 'The Mobile Robot Programming Toolkit (MRPT) '
+    settings = 'os', 'compiler', 'build_type', 'arch'
+    generators = 'cmake'
     requires = (
         'eigen/[>=3.2.0]@ntc/stable',
         'vtk/[>=5.6.1]@ntc/stable',
         'freeglut/[>=3.0.0]@ntc/stable',
-        'opencv/[>=3.1.0]@ntc/stable',
+        'opencv/[>=2.4.9]@ntc/stable',
         'assimp/[>=3.1]@ntc/stable',
         'zlib/[>=1.2.11]@conan/stable',
         'pcl/[>=1.7.0]@ntc/stable',
+        'flann/[>=1.6.8]@ntc/stable',
+        'boost/[>1.46]@ntc/stable',
     )
-    options = {"shared": [True, False]}
-    default_options = "shared=True"
+    options = {
+        'shared':      [True, False],
+        'build_tests': [True, False],
+    }
+    default_options = 'shared=True', 'build_tests=False'
 
     def configure(self):
         self.options['opencv'].shared = self.options.shared
