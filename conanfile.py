@@ -205,7 +205,7 @@ class MrptConan(ConanFile):
 # Note:  This file has been manually modified to not inject links/includes into
 # the global scope, and to instead define MRPT_LIBRARIES and MRPT_INCLUDE_DIRS
 # that can then be used by our OPAL_MRPT find script
-#
+
 ''' + data
 
             m = re.search(r'INCLUDE_DIRECTORIES\("(?P<path>.*?eigen[^"]+)"\)', data)
