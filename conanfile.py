@@ -4,6 +4,12 @@ from conans.errors import ConanException
 
 
 class MrptConan(ConanFile):
+    """
+    Tested with versions 1.4.0, 1.5.5.
+
+    1.2.2 fails with 'cannot find -lQt5::Widgets'
+    """
+
     name = 'mrpt'
     license = 'BSD'
     url = 'http://www.mrpt.org/'
@@ -18,6 +24,7 @@ class MrptConan(ConanFile):
         'assimp/[>=3.1]@ntc/stable',
         'zlib/[>=1.2.11]@conan/stable',
         'pcl/[>=1.7.0]@ntc/stable',
+        'qt/[>=5.3.2]@ntc/stable',
         'flann/[>=1.6.8]@ntc/stable',
         'boost/[>1.46]@ntc/stable',
     )
@@ -56,6 +63,20 @@ class MrptConan(ConanFile):
 
         tools.unzip(archive)
         shutil.move(f'mrpt-{self.version}', self.name)
+
+        vtk_release = int(self.deps_cpp_info['vtk'].version.split('.')[0])
+        if vtk_release < 7:
+            # Need to add find_package(Qt5Widgets).  I think the HEAD of OpenCV
+            # does this, but 1.5.5- doesn't.  I believe this is required because
+            # VTK injects dependencies to it, and no matter how hard I try, I can't
+            # seem to build without VTK or this dependency.  I don't recall
+            # seeing this after VTK v7 though.
+            self.output.info('Injecting a find_package(Qt5Widgets) due to VTK 6')
+            file = os.path.join(self.name, 'cmakemodules/DeclareMRPTLib.cmake')
+            with open(file) as f: data = f.read()
+            data = 'find_package(Qt5Widgets)\n\n' + data
+            with open(file, 'w') as f: f.write(data)
+
 
     def system_requirements(self):
         pack_names = None
@@ -105,8 +126,14 @@ class MrptConan(ConanFile):
         args.append('-DBUILD_EXAMPLES:BOOL=FALSE')
         args.append('-DMRPT_HAS_ASIAN_FONTS:BOOL=FALSE')
         args.append('-DCMAKE_CXX_FLAGS="-fPIC"')
-        args.append('-DOpenCV_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['opencv'].rootpath, 'share', 'OpenCV'))
+        args.append('-DBUILD_TESTING:BOOL=%s'%('TRUE' if self.options.build_tests else 'FALSE'))
+
+        # Skipping xSens (3rd and 4th gen libs for xSens MT* devices)
+        args.append('-DBUILD_XSENS_MT3:BOOL=FALSE')
+        args.append('-DBUILD_XSENS_MT4:BOOL=FALSE')
+
         args.append('-DPCL_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['pcl'].rootpath, 'share', f'pcl-{pcl_major}'))
+        args.append('-DOpenCV_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['opencv'].rootpath, 'share', 'OpenCV'))
         args.append('-DVTK_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}'))
         args.append('-DBUILD_TESTING:BOOL=%s'%('TRUE' if self.options.build_tests else 'FALSE'))
 
@@ -114,8 +141,14 @@ class MrptConan(ConanFile):
         args.append('-DBUILD_XSENS_MT3:BOOL=FALSE')
         args.append('-DBUILD_XSENS_MT4:BOOL=FALSE')
 
+        args.append('-DPCL_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['pcl'].rootpath, 'share', f'pcl-{pcl_major}'))
+        args.append('-DOpenCV_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['opencv'].rootpath, 'share', 'OpenCV'))
+        args.append('-DVTK_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}'))
+
         args.append('-DGLUT_INCLUDE_DIR=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include'))
         args.append('-DGLUT_glut_LIBRARY=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so'))
+
+        args.append('-DQt5Widgets_DIR:PATH=%s'%  os.path.join(self.deps_cpp_info['qt'].rootpath, 'lib', 'cmake', 'Qt5Widgets'))
 
         args.append('-DZLIB_INCLUDE_DIR=%s'%os.path.join(self.deps_cpp_info['zlib'].rootpath, 'include'))
         if self.options.shared:
@@ -131,11 +164,12 @@ class MrptConan(ConanFile):
             'PKG_CONFIG_pcl_PREFIX':    self.deps_cpp_info['pcl'].rootpath,
             'PKG_CONFIG_flann_PREFIX':  self.deps_cpp_info['flann'].rootpath,
             'PKG_CONFIG_PATH': ':'.join([
-                os.path.join(self.deps_cpp_info['eigen'].rootpath, 'share', 'pkgconfig'),
-                os.path.join(self.deps_cpp_info['assimp'].rootpath, 'lib', 'pkgconfig'),
-                os.path.join(self.deps_cpp_info['pcl'].rootpath, 'lib', 'pkgconfig'),
-                os.path.join(self.deps_cpp_info['flann'].rootpath, 'lib', 'pkgconfig'),
-            ])
+                os.path.join(self.deps_cpp_info['eigen'].rootpath,  'share', 'pkgconfig'),
+                os.path.join(self.deps_cpp_info['assimp'].rootpath, 'lib',   'pkgconfig'),
+                os.path.join(self.deps_cpp_info['pcl'].rootpath,    'lib',   'pkgconfig'),
+                os.path.join(self.deps_cpp_info['flann'].rootpath,  'lib',   'pkgconfig'),
+            ]),
+            'OpenCV_ROOT_DIR': self.deps_cpp_info['opencv'].rootpath,
         }
 
         cmake = CMake(self)
@@ -161,8 +195,7 @@ class MrptConan(ConanFile):
             self.output.warn('Could not fix non-existant file: %s'%path)
             return
 
-        with open(path) as f:
-            data = f.read()
+        with open(path) as f: data = f.read()
 
         m = re.search(r'SET.MRPT_DIR "(?P<base>.*?)(?P<type>(build|package))(?P<rest>.*?(?="))', data)
         if not m:
@@ -171,8 +204,74 @@ class MrptConan(ConanFile):
         for t in ['build', 'package']:
             data = data.replace(m.group('base') + t + m.group('rest'), '${CONAN_MRPT_ROOT}')
 
-        outp = open(path, 'w')
-        outp.write(data)
+
+        mrpt_major = int(self.version.split('.')[1])
+        if mrpt_major <= 2:
+            # This CMake file pollutes the INCLUDE and LINK spaces, so we gotta
+            # clean those out.
+
+            data = '''#
+# Note:  This file has been manually modified to not inject links/includes into
+# the global scope, and to instead define MRPT_LIBRARIES and MRPT_INCLUDE_DIRS
+# that can then be used by our OPAL_MRPT find script
+
+''' + data
+
+            m = re.search(r'INCLUDE_DIRECTORIES\("(?P<path>.*?eigen[^"]+)"\)', data)
+            if m:
+                data = data.replace(m.group(0), 'list(APPEND MRPT_INCLUDE_DIRS "${CONAN_INCLUDE_DIRS_EIGEN}")')
+            else:
+                self.output.warn('Could not repair reference to Eigen include directory in MRPTConfig.cmake')
+
+            m = re.search(r'INCLUDE_DIRECTORIES\(\${MRPT_CONFIG_DIR}\)', data)
+            if m:
+                data = data.replace(m.group(0), 'list(APPEND MRPT_INCLUDE_DIRS "${MRPT_CONFIG_DIR}")')
+            else:
+                self.output.warn('Could not repair reference to MRPT CONFIG directory in MRPTConfig.cmake')
+
+            m = re.search(r'LINK_DIRECTORIES\(""\)', data)
+            if m:
+                data = data.replace(m.group(0), '# ' + m.group(0))
+            else:
+                self.output.warn('Could not comment out empty link_directories directive in MRPTConfig.cmake')
+
+            m = re.search(r'INCLUDE_DIRECTORIES\("(?P<suitesparse>[^"]+)"\) # SuiteSparse\w+', data)
+            if m:
+                # Note: We may want to replace this with a Conan package for SuiteSparse in the future
+                data = data.replace(m.group(0), 'list(APPEND MRPT_INCLUDE_DIRS "%s") # SuiteSparse_INCLUDE_DIRS'%m.group('suitesparse'))
+            else:
+                self.output.warn('Could not repair reference to SuiteSparse directory in MRPTConfig.cmake')
+
+            m = re.search(r'INCLUDE_DIRECTORIES\("(?P<path>\${MRPT_LIBS_INCL_DIR}/\${MRPTLIB}/include)"\)', data)
+            if m:
+                data = data.replace(m.group(0), 'list(APPEND MRPT_INCLUDE_DIRS "%s")'%m.group('path'))
+            else:
+                self.output.warn('Could not repair reference to MRPT include directory in MRPTConfig.cmake')
+
+            m = re.search(r'LINK_DIRECTORIES\(\${wxWidgets_LIBRARY_DIRS}\)', data)
+            if m:
+                data = data.replace(m.group(0), 'list(APPEND MRPT_INCLUDE_DIRS "%s")'%'list(APPEND MRPT_LINK_DIRECTORIES ${wxWidgets_LIBRARY_DIRS})')
+            else:
+                self.output.warn('Could not repair the link to wxWidget in MRPTConfig.cmake')
+
+            m = re.search(r'(?P<first>LINK_DIRECTORIES\("/lib"\))\s+LINK_DIRECTORIES\("/lib"\)', data, re.MULTILINE)
+            if m:
+                data = data.replace(m.group(0), m.group('first'))
+            else:
+                self.output.warn('Could not remove the duplicate link directories in MRPTConfig.cmake')
+
+            m = re.search(r'LINK_DIRECTORIES\((?P<lib>\${MRPT_DIR}/lib)\)', data)
+            if m:
+                data = data.replace(m.group(0), 'list(APPEND MRPT_LINK_DIRECTORIES "%s")'%m.group('lib'))
+            else:
+                self.output.warn('Could not repair link to MRPT libs in MRPTConfig.cmake')
+
+            data += '''
+
+# Defining for forward-compatiblity
+set(MRPT_LIBRARIES ${MRPT_LIBS})'''
+
+        with open(path, 'w') as f: f.write(data)
 
 
     def package(self):
