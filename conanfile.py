@@ -144,6 +144,11 @@ class MrptConan(ConanFile):
         args.append('-DPCL_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['pcl'].rootpath, 'share', f'pcl-{pcl_major}'))
         args.append('-DOpenCV_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['opencv'].rootpath, 'share', 'OpenCV'))
         args.append('-DVTK_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}'))
+        args.append('-DBUILD_TESTING:BOOL=%s'%('TRUE' if self.options.build_tests else 'FALSE'))
+
+        # Skipping xSens (3rd and 4th gen libs for xSens MT* devices)
+        args.append('-DBUILD_XSENS_MT3:BOOL=FALSE')
+        args.append('-DBUILD_XSENS_MT4:BOOL=FALSE')
 
         args.append('-DGLUT_INCLUDE_DIR=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include'))
         args.append('-DGLUT_glut_LIBRARY=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so'))
