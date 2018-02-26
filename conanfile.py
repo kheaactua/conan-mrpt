@@ -35,8 +35,15 @@ class MrptConan(ConanFile):
     default_options = 'shared=True', 'build_tests=False'
 
     def configure(self):
-        self.options['opencv'].shared = self.options.shared
-        self.options['zlib'].shared = self.options.shared
+        self.options['flann'].shared    = self.options.shared
+        self.options['opencv'].shared   = self.options.shared
+        self.options['boost'].shared    = self.options.shared
+        self.options['freeglut'].shared = self.options.shared
+        self.options['vtk'].shared      = self.options.shared
+        self.options['pcl'].shared      = self.options.shared
+        self.options['assimp'].shared   = self.options.shared
+        self.options['opencv'].shared   = self.options.shared
+        self.options['zlib'].shared     = self.options.shared
 
     def source(self):
 
