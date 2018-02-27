@@ -110,6 +110,12 @@ class MrptConan(ConanFile):
             installer.update() # Update the package database
             installer.install(" ".join(pack_names)) # Install the package
 
+
+    def build_requirements(self):
+        if 'Linux' == self.settings.os:
+            self.build_requires('pkg-config/0.29.2@ntc/stable')
+
+
     def build(self):
 
         mrpt_major = int(self.version.split('.')[1])
