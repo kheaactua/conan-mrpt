@@ -1,5 +1,6 @@
 import os, sys, shutil, re
 from conans import ConanFile, CMake, tools
+from conans.model.version import Version
 from conans.errors import ConanException
 
 
@@ -21,7 +22,6 @@ class MrptConan(ConanFile):
         'vtk/[>=5.6.1]@ntc/stable',
         'freeglut/[>=3.0.0]@ntc/stable',
         'opencv/[>=2.4.9]@ntc/stable',
-        'assimp/[>=3.1]@ntc/stable',
         'zlib/[>=1.2.11]@conan/stable',
         'pcl/[>=1.7.0]@ntc/stable',
         'qt/[>=5.3.2]@ntc/stable',
@@ -33,6 +33,14 @@ class MrptConan(ConanFile):
         'build_tests': [True, False],
     }
     default_options = 'shared=True', 'build_tests=False'
+
+    def requirements(self):
+        if 'x86' == self.settings.arch and 'Linux' == self.settings.os:
+            # On Linux 32, assimp seems to not be building with c++11, which
+            # causes a bunch of problems
+            self.requires('assimp/[>=3.1,<4.0]@ntc/stable')
+        else:
+            self.requires('assimp/[>=3.1]@ntc/stable')
 
     def configure(self):
         self.options['flann'].shared    = self.options.shared
@@ -124,7 +132,6 @@ class MrptConan(ConanFile):
 
     def build(self):
 
-        mrpt_major = int(self.version.split('.')[1])
         vtk_major  = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
         pcl_major  = '.'.join(self.deps_cpp_info['pcl'].version.split('.')[:2])
 
@@ -206,8 +213,8 @@ class MrptConan(ConanFile):
             data = data.replace(m.group('base') + t + m.group('rest'), '${CONAN_MRPT_ROOT}')
 
 
-        mrpt_major = int(self.version.split('.')[1])
-        if mrpt_major <= 2:
+        mrpt_version = Version(str(self.version))
+        if mrpt_version <= '2':
             # This CMake file pollutes the INCLUDE and LINK spaces, so we gotta
             # clean those out.
 
