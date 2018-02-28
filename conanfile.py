@@ -119,8 +119,7 @@ class MrptConan(ConanFile):
 
 
     def build_requirements(self):
-        if 'Linux' == self.settings.os:
-            self.build_requires('pkg-config/0.29.2@ntc/stable')
+        self.build_requires('pkg-config/0.29.2@ntc/stable')
 
 
     def build(self):
@@ -167,7 +166,7 @@ class MrptConan(ConanFile):
             'PKG_CONFIG_assimp_PREFIX': self.deps_cpp_info['assimp'].rootpath,
             'PKG_CONFIG_pcl_PREFIX':    self.deps_cpp_info['pcl'].rootpath,
             'PKG_CONFIG_flann_PREFIX':  self.deps_cpp_info['flann'].rootpath,
-            'PKG_CONFIG_PATH': ':'.join([
+            'PKG_CONFIG_PATH': (';' if 'Windows' == self.settings.os else ':').join([
                 os.path.join(self.deps_cpp_info['eigen'].rootpath,  'share', 'pkgconfig'),
                 os.path.join(self.deps_cpp_info['assimp'].rootpath, 'lib',   'pkgconfig'),
                 os.path.join(self.deps_cpp_info['pcl'].rootpath,    'lib',   'pkgconfig'),
