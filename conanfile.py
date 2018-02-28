@@ -128,39 +128,38 @@ class MrptConan(ConanFile):
         vtk_major  = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
         pcl_major  = '.'.join(self.deps_cpp_info['pcl'].version.split('.')[:2])
 
-        args = []
+        cmake = CMake(self)
 
-        if self.options.shared:
-            args.append('-DBUILD_SHARED_LIBS:BOOL=TRUE')
-        args.append('-DBOOST_ROOT:PATH=%s'%self.deps_cpp_info['boost'].rootpath)
-        args.append('-DBUILD_KINECT:BOOL=FALSE')
-        args.append('-DMRPT_HAS_ASIAN_FONTS:BOOL=FALSE')
-        args.append('-DBUILD_EXAMPLES:BOOL=FALSE')
-        args.append('-DMRPT_HAS_ASIAN_FONTS:BOOL=FALSE')
-        args.append('-DCMAKE_CXX_FLAGS="-fPIC"')
-        args.append('-DBUILD_TESTING:BOOL=%s'%('TRUE' if self.options.build_tests else 'FALSE'))
+        cmake.definitions['BUILD_SHARED_LIBS:BOOL']    = 'TRUE' if self.options.shared else 'FALSE'
+        cmake.definitions['BOOST_ROOT:PATH']           = self.deps_cpp_info['boost'].rootpath
+        cmake.definitions['BUILD_KINECT:BOOL']         = 'FALSE'
+        cmake.definitions['MRPT_HAS_ASIAN_FONTS:BOOL'] = 'FALSE'
+        cmake.definitions['BUILD_EXAMPLES:BOOL']       = 'FALSE'
+        cmake.definitions['MRPT_HAS_ASIAN_FONTS:BOOL'] = 'FALSE'
+        cmake.definitions['CMAKE_CXX_FLAGS']           = '-fPIC'
+        cmake.definitions['BUILD_TESTING:BOOL']        = 'TRUE' if self.options.build_tests else 'FALSE'
 
         # Skipping xSens (3rd and 4th gen libs for xSens MT* devices)
-        args.append('-DBUILD_XSENS_MT3:BOOL=FALSE')
-        args.append('-DBUILD_XSENS_MT4:BOOL=FALSE')
+        cmake.definitions['BUILD_XSENS_MT3:BOOL'] = 'FALSE'
+        cmake.definitions['BUILD_XSENS_MT4:BOOL'] = 'FALSE'
 
-        args.append('-DPCL_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['pcl'].rootpath, 'share', f'pcl-{pcl_major}'))
-        args.append('-DOpenCV_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['opencv'].rootpath, 'share', 'OpenCV'))
-        args.append('-DVTK_DIR:PATH=%s'%os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}'))
+        cmake.definitions['PCL_DIR:PATH']        = os.path.join(self.deps_cpp_info['pcl'].rootpath, 'share', f'pcl-{pcl_major}')
+        cmake.definitions['OpenCV_DIR:PATH']     = os.path.join(self.deps_cpp_info['opencv'].rootpath, 'share', 'OpenCV')
+        cmake.definitions['VTK_DIR:PATH']        = os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}')
 
-        args.append('-DGLUT_INCLUDE_DIR=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include'))
-        args.append('-DGLUT_glut_LIBRARY=%s'%os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so'))
+        cmake.definitions['GLUT_INCLUDE_DIR']    = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include')
+        cmake.definitions['GLUT_glut_LIBRARY']   = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so')
 
-        args.append('-DQt5Widgets_DIR:PATH=%s'%  os.path.join(self.deps_cpp_info['qt'].rootpath, 'lib', 'cmake', 'Qt5Widgets'))
+        cmake.definitions['Qt5Widgets_DIR:PATH'] = os.path.join(self.deps_cpp_info['qt'].rootpath, 'lib', 'cmake', 'Qt5Widgets')
 
-        args.append('-DZLIB_INCLUDE_DIR=%s'%os.path.join(self.deps_cpp_info['zlib'].rootpath, 'include'))
+        cmake.definitions['ZLIB_INCLUDE_DIR']    = os.path.join(self.deps_cpp_info['zlib'].rootpath, 'include')
         if self.options.shared:
             libz = 'libz.so' if self.settings.os == 'Linux' else 'libz.dll'
         else:
             libz = 'libz.a' if self.settings.os == 'Linux' else 'libz.lib'
-        args.append('-DZLIB_LIBRARY_RELEASE=%s'%os.path.join(self.deps_cpp_info['zlib'].rootpath, 'lib', libz))
+        cmake.definitions['ZLIB_LIBRARY_RELEASE'] = os.path.join(self.deps_cpp_info['zlib'].rootpath, 'lib', libz)
 
-        args.append('-DBUILD_ASSIMP:BOOL=FALSE')
+        cmake.definitions['BUILD_ASSIMP:BOOL'] = 'FALSE'
         pkg_vars = {
             'PKG_CONFIG_eigen3_PREFIX': self.deps_cpp_info['eigen'].rootpath,
             'PKG_CONFIG_assimp_PREFIX': self.deps_cpp_info['assimp'].rootpath,
@@ -175,9 +174,8 @@ class MrptConan(ConanFile):
             'OpenCV_ROOT_DIR': self.deps_cpp_info['opencv'].rootpath,
         }
 
-        cmake = CMake(self)
         with tools.environment_append(pkg_vars):
-            cmake.configure(source_folder=self.name, args=args)
+            cmake.configure(source_folder=self.name)
             cmake.build()
 
         # Fix up the CMake Find Script MRPT generated
