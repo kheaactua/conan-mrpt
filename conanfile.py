@@ -167,21 +167,11 @@ class MrptConan(ConanFile):
         cmake.definitions['ZLIB_LIBRARY_RELEASE'] = os.path.join(self.deps_cpp_info['zlib'].rootpath, 'lib', libz)
 
         cmake.definitions['BUILD_ASSIMP:BOOL'] = 'FALSE'
-        pkg_vars = {
-            'PKG_CONFIG_eigen3_PREFIX': self.deps_cpp_info['eigen'].rootpath,
-            'PKG_CONFIG_assimp_PREFIX': self.deps_cpp_info['assimp'].rootpath,
-            'PKG_CONFIG_pcl_PREFIX':    self.deps_cpp_info['pcl'].rootpath,
-            'PKG_CONFIG_flann_PREFIX':  self.deps_cpp_info['flann'].rootpath,
-            'PKG_CONFIG_PATH': (';' if 'Windows' == self.settings.os else ':').join([
-                os.path.join(self.deps_cpp_info['eigen'].rootpath,  'share', 'pkgconfig'),
-                os.path.join(self.deps_cpp_info['assimp'].rootpath, 'lib',   'pkgconfig'),
-                os.path.join(self.deps_cpp_info['pcl'].rootpath,    'lib',   'pkgconfig'),
-                os.path.join(self.deps_cpp_info['flann'].rootpath,  'lib',   'pkgconfig'),
-            ]),
+        env_vars = {
             'OpenCV_ROOT_DIR': self.deps_cpp_info['opencv'].rootpath,
         }
 
-        with tools.environment_append(pkg_vars):
+        with tools.environment_append(env_vars):
             cmake.configure(source_folder=self.name)
             cmake.build()
 
