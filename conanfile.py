@@ -30,9 +30,11 @@ class MrptConan(ConanFile):
     )
     options = {
         'shared':      [True, False],
+        'fPIC':        [True, False],
+        'cxx11':       [True, False],
         'build_tests': [True, False],
     }
-    default_options = 'shared=True', 'build_tests=False'
+    default_options = 'shared=True', 'fPIC', 'cxx11', 'build_tests=False'
 
     def requirements(self):
         if 'x86' == self.settings.arch and 'Linux' == self.settings.os:
@@ -42,7 +44,12 @@ class MrptConan(ConanFile):
         else:
             self.requires('assimp/[>=3.1]@ntc/stable')
 
+    def config_options(self):
+        if self.settings.compiler == "Visual Studio":
+            self.options.remove("fPIC")
+
     def configure(self):
+        # I don't think this is a good idea anymore.
         self.options['flann'].shared    = self.options.shared
         self.options['opencv'].shared   = self.options.shared
         self.options['boost'].shared    = self.options.shared
@@ -52,6 +59,9 @@ class MrptConan(ConanFile):
         self.options['assimp'].shared   = self.options.shared
         self.options['opencv'].shared   = self.options.shared
         self.options['zlib'].shared     = self.options.shared
+
+        if self.settings.compiler != "Visual Studio":
+            self.options['boost'].fPIC = True
 
     def source(self):
 
@@ -137,13 +147,17 @@ class MrptConan(ConanFile):
 
         cmake = CMake(self)
 
+        if 'fPIC' in self.options and self.options.fPIC:
+            cmake.definitions['CMAKE_POSITION_INDEPENDENT_CODE'] = 'ON'
+        if self.options.cxx11:
+            cmake.definitions['CMAKE_CXX_STANDARD'] = 11
+
         cmake.definitions['BUILD_SHARED_LIBS:BOOL']    = 'TRUE' if self.options.shared else 'FALSE'
         cmake.definitions['BOOST_ROOT:PATH']           = self.deps_cpp_info['boost'].rootpath
         cmake.definitions['BUILD_KINECT:BOOL']         = 'FALSE'
         cmake.definitions['MRPT_HAS_ASIAN_FONTS:BOOL'] = 'FALSE'
         cmake.definitions['BUILD_EXAMPLES:BOOL']       = 'FALSE'
         cmake.definitions['MRPT_HAS_ASIAN_FONTS:BOOL'] = 'FALSE'
-        cmake.definitions['CMAKE_CXX_FLAGS']           = '-fPIC'
         cmake.definitions['BUILD_TESTING:BOOL']        = 'TRUE' if self.options.build_tests else 'FALSE'
 
         # Skipping xSens (3rd and 4th gen libs for xSens MT* devices)
