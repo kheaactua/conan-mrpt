@@ -143,7 +143,6 @@ class MrptConan(ConanFile):
     def build(self):
 
         vtk_major  = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
-        pcl_major  = '.'.join(self.deps_cpp_info['pcl'].version.split('.')[:2])
 
         cmake = CMake(self)
 
@@ -164,8 +163,8 @@ class MrptConan(ConanFile):
         cmake.definitions['BUILD_XSENS_MT3:BOOL'] = 'FALSE'
         cmake.definitions['BUILD_XSENS_MT4:BOOL'] = 'FALSE'
 
-        cmake.definitions['PCL_DIR:PATH']        = os.path.join(self.deps_cpp_info['pcl'].rootpath, 'share', f'pcl-{pcl_major}')
-        cmake.definitions['OpenCV_DIR:PATH']     = os.path.join(self.deps_cpp_info['opencv'].rootpath, 'share', 'OpenCV')
+        cmake.definitions['PCL_DIR:PATH']        = self.deps_cpp_info['pcl'].resdirs[0]
+        cmake.definitions['OpenCV_DIR:PATH']     = self.deps_cpp_info['opencv'].resdirs[0]
         cmake.definitions['VTK_DIR:PATH']        = os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}')
 
         cmake.definitions['GLUT_INCLUDE_DIR']    = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include')
