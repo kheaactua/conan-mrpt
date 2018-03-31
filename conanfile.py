@@ -34,7 +34,12 @@ class MrptConan(ConanFile):
         'cxx11':       [True, False],
         'build_tests': [True, False],
     }
-    default_options = 'shared=True', 'fPIC', 'cxx11', 'build_tests=False'
+    default_options = (
+        'shared=True',
+        'fPIC=True',
+        'cxx11=True',
+        'build_tests=False',
+    )
 
     def requirements(self):
         if 'x86' == self.settings.arch and 'Linux' == self.settings.os:
@@ -102,6 +107,12 @@ class MrptConan(ConanFile):
             data = 'find_package(Qt5Widgets)\n\n' + data
             with open(file, 'w') as f: f.write(data)
 
+        # C1027 error
+        tools.replace_in_file(
+            file_path=os.path.join(self.name, 'CMakeLists.txt'),
+            search='/Zm1000',
+            replace='/Zm300',
+        )
 
     def system_requirements(self):
         pack_names = None
@@ -139,9 +150,7 @@ class MrptConan(ConanFile):
     def build_requirements(self):
         self.build_requires('pkg-config/0.29.2@ntc/stable')
 
-
     def build(self):
-
         vtk_major  = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
 
         cmake = CMake(self)
@@ -152,11 +161,11 @@ class MrptConan(ConanFile):
             cmake.definitions['CMAKE_CXX_STANDARD'] = 11
 
         cmake.definitions['BUILD_SHARED_LIBS:BOOL']    = 'TRUE' if self.options.shared else 'FALSE'
+        cmake.definitions['BOOST_DYNAMIC:PATH']        = 'TRUE' if self.options['boost'].shared else 'FALSE'
         cmake.definitions['BOOST_ROOT:PATH']           = self.deps_cpp_info['boost'].rootpath
         cmake.definitions['BUILD_KINECT:BOOL']         = 'FALSE'
         cmake.definitions['MRPT_HAS_ASIAN_FONTS:BOOL'] = 'FALSE'
         cmake.definitions['BUILD_EXAMPLES:BOOL']       = 'FALSE'
-        cmake.definitions['MRPT_HAS_ASIAN_FONTS:BOOL'] = 'FALSE'
         cmake.definitions['BUILD_TESTING:BOOL']        = 'TRUE' if self.options.build_tests else 'FALSE'
 
         # Skipping xSens (3rd and 4th gen libs for xSens MT* devices)
@@ -183,6 +192,18 @@ class MrptConan(ConanFile):
         env_vars = {
             'OpenCV_ROOT_DIR': self.deps_cpp_info['opencv'].rootpath,
         }
+
+
+        # Debug
+        s = '\nAdditional Environment:\n'
+        for k,v in env_vars.items():
+            s += ' - %s=%s\n'%(k, v)
+        self.output.info(s)
+
+        s = '\nCMake Definitions:\n'
+        for k,v in cmake.definitions.items():
+            s += ' - %s=%s\n'%(k, v)
+        self.output.info(s)
 
         with tools.environment_append(env_vars):
             cmake.configure(source_folder=self.name)
