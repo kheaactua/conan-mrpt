@@ -1,4 +1,4 @@
-import os, sys, shutil, re
+import os, sys, shutil, re, platform
 from conans import ConanFile, CMake, tools
 from conans.model.version import Version
 from conans.errors import ConanException
@@ -312,7 +312,11 @@ set(MRPT_LIBRARIES ${MRPT_LIBS})'''
             self.fixFindPackage(os.path.join(self.package_folder, 'share', 'mrpt', 'MRPTConfig.cmake'))
 
     def package_info(self):
-        # Put CMake file here
-        pass
+        # Add the directory with CMake.. Not sure if this is a good use of resdirs
+        if 'Windows' == platform.system():
+            # On Windows, this CMake file is in a different place
+            self.cpp_info.resdirs = [self.package_folder]
+        else:
+            self.cpp_info.resdirs = [os.path.join(self.package_folder, 'share', 'mrpt')]
 
 # vim: ts=4 sw=4 expandtab ffs=unix ft=python foldmethod=marker :
