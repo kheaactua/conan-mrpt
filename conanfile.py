@@ -209,13 +209,7 @@ class MrptConan(ConanFile):
             cmake.configure(source_folder=self.name)
             cmake.build()
 
-        # Fix up the CMake Find Script MRPT generated
-        self.output.info('Inserting Conan variables in to the PCL CMake Find script.')
-
         cmake.install()
-
-        self.fixFindPackage(os.path.join(self.package_folder, 'share', 'mrpt', 'MRPTConfig.cmake'))
-
 
     def fixFindPackage(self, path):
         """
@@ -307,7 +301,10 @@ set(MRPT_LIBRARIES ${MRPT_LIBS})'''
 
 
     def package(self):
-        pass
+        # Fix up the CMake Find Script MRPT generated
+        self.output.info('Inserting Conan variables in to the MRPT CMake Find script.')
+
+        self.fixFindPackage(os.path.join(self.package_folder, 'share', 'mrpt', 'MRPTConfig.cmake'))
 
     def package_info(self):
         # Put CMake file here
