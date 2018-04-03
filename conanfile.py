@@ -222,12 +222,16 @@ class MrptConan(ConanFile):
 
         with open(path) as f: data = f.read()
 
-        m = re.search(r'SET.MRPT_DIR "(?P<base>.*?)(?P<type>(build|package))(?P<rest>.*?(?="))', data)
-        if not m:
-            self.output.warn('Could not find MRPT source directory in CMake file')
-            return
-        for t in ['build', 'package']:
-            data = data.replace(m.group('base') + t + m.group('rest'), '${CONAN_MRPT_ROOT}')
+        m = re.search(r'get_filename_component.THIS_MRPT_CONFIG_PATH "..CMAKE_CURRENT_LIST_FILE." PATH.', data)
+        if m:
+            data = data.replace(m.group(0), 'set(THIS_MRPT_CONFIG_PATH ${CONAN_MRPT_ROOT})')
+        else:
+            m = re.search(r'SET.MRPT_DIR "(?P<base>.*?)(?P<type>(build|package))(?P<rest>.*?(?="))', data)
+            if not m:
+                self.output.warn('Could not find MRPT source directory in CMake file: %s'%path)
+                return
+            for t in ['build', 'package']:
+                data = data.replace(m.group('base') + t + m.group('rest'), '${CONAN_MRPT_ROOT}')
 
 
         mrpt_version = Version(str(self.version))
