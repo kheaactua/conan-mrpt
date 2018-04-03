@@ -69,7 +69,6 @@ class MrptConan(ConanFile):
             self.options['boost'].fPIC = True
 
     def source(self):
-
         ext = 'tar.gz'
         archive=f'{self.version}.{ext}'
         archive_url=f'https://github.com/MRPT/mrpt/archive/{archive}'
