@@ -298,12 +298,14 @@ set(MRPT_LIBRARIES ${MRPT_LIBS})'''
 
         with open(path, 'w') as f: f.write(data)
 
-
     def package(self):
         # Fix up the CMake Find Script MRPT generated
         self.output.info('Inserting Conan variables in to the MRPT CMake Find script.')
 
-        self.fixFindPackage(os.path.join(self.package_folder, 'share', 'mrpt', 'MRPTConfig.cmake'))
+        if 'Visual Studio' == self.settings.compiler:
+            self.fixFindPackage(os.path.join(self.package_folder, 'MRPTConfig.cmake'))
+        else:
+            self.fixFindPackage(os.path.join(self.package_folder, 'share', 'mrpt', 'MRPTConfig.cmake'))
 
     def package_info(self):
         # Put CMake file here
