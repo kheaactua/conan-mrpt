@@ -6,9 +6,7 @@ from conans.errors import ConanException
 
 class MrptConan(ConanFile):
     """
-    Tested with versions 1.4.0, 1.5.5.
-
-    1.2.2 fails with 'cannot find -lQt5::Widgets'
+    Tested with versions 1.2.2, 1.4.0, 1.5.5.
     """
 
     name = 'mrpt'
@@ -221,6 +219,10 @@ class MrptConan(ConanFile):
             return
 
         with open(path) as f: data = f.read()
+
+        if re.search(r'CONAN', data):
+            self.output.info('MRPTConfig.cmake file already patched with Conan variables')
+            return
 
         m = re.search(r'get_filename_component.THIS_MRPT_CONFIG_PATH "..CMAKE_CURRENT_LIST_FILE." PATH.', data)
         if m:
