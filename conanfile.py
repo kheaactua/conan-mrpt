@@ -158,7 +158,7 @@ class MrptConan(ConanFile):
             cmake.definitions['CMAKE_CXX_STANDARD'] = 11
 
         cmake.definitions['BUILD_SHARED_LIBS:BOOL']    = 'TRUE' if self.options.shared else 'FALSE'
-        cmake.definitions['BOOST_DYNAMIC:PATH']        = 'TRUE' if self.options['boost'].shared else 'FALSE'
+        cmake.definitions['BOOST_DYNAMIC:BOOL']        = 'TRUE' if self.options['boost'].shared else 'FALSE'
         cmake.definitions['BOOST_ROOT:PATH']           = self.deps_cpp_info['boost'].rootpath
         cmake.definitions['BUILD_KINECT:BOOL']         = 'FALSE'
         cmake.definitions['MRPT_HAS_ASIAN_FONTS:BOOL'] = 'FALSE'
