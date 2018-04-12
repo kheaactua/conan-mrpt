@@ -140,8 +140,11 @@ class MrptConan(ConanFile):
 
         if pack_names:
             installer = tools.SystemPackageTool()
-            installer.update() # Update the package database
-            installer.install(" ".join(pack_names)) # Install the package
+            try:
+                installer.update() # Update the package database
+                installer.install(" ".join(pack_names)) # Install the package
+            except ConanException:
+                self.output.warn('Could not run system updates')
 
 
     def build_requirements(self):
@@ -157,9 +160,12 @@ class MrptConan(ConanFile):
         if self.options.cxx11:
             cmake.definitions['CMAKE_CXX_STANDARD'] = 11
 
-        cmake.definitions['BUILD_SHARED_LIBS:BOOL']    = 'TRUE' if self.options.shared else 'FALSE'
+        # Reported as unused by cmake
         cmake.definitions['BOOST_DYNAMIC:BOOL']        = 'TRUE' if self.options['boost'].shared else 'FALSE'
         cmake.definitions['BOOST_ROOT:PATH']           = self.deps_cpp_info['boost'].rootpath
+        #
+
+        cmake.definitions['BUILD_SHARED_LIBS:BOOL']    = 'TRUE' if self.options.shared else 'FALSE'
         cmake.definitions['BUILD_KINECT:BOOL']         = 'FALSE'
         cmake.definitions['MRPT_HAS_ASIAN_FONTS:BOOL'] = 'FALSE'
         cmake.definitions['BUILD_EXAMPLES:BOOL']       = 'FALSE'
@@ -178,12 +184,7 @@ class MrptConan(ConanFile):
 
         cmake.definitions['Qt5Widgets_DIR:PATH'] = os.path.join(self.deps_cpp_info['qt'].rootpath, 'lib', 'cmake', 'Qt5Widgets')
 
-        cmake.definitions['ZLIB_INCLUDE_DIR']    = os.path.join(self.deps_cpp_info['zlib'].rootpath, 'include')
-        if self.options.shared:
-            libz = 'libz.so' if self.settings.os == 'Linux' else 'libz.dll'
-        else:
-            libz = 'libz.a' if self.settings.os == 'Linux' else 'libz.lib'
-        cmake.definitions['ZLIB_LIBRARY_RELEASE'] = os.path.join(self.deps_cpp_info['zlib'].rootpath, 'lib', libz)
+        cmake.definitions['ZLIB_ROOT']    = self.deps_cpp_info['zlib'].rootpath
 
         cmake.definitions['BUILD_ASSIMP:BOOL'] = 'FALSE'
         env_vars = {
