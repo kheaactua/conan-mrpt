@@ -1,4 +1,4 @@
-import os, sys, shutil, re, platform
+import os, sys, shutil, re, platform, glob
 from conans import ConanFile, CMake, tools
 from conans.model.version import Version
 from conans.errors import ConanException
@@ -25,6 +25,7 @@ class MrptConan(ConanFile):
         'qt/[>=5.3.2]@ntc/stable',
         'flann/[>=1.6.8]@ntc/stable',
         'boost/[>1.46]@ntc/stable',
+        'helpers/0.3@ntc/stable',
     )
     options = {
         'shared':      [True, False],
@@ -191,7 +192,6 @@ class MrptConan(ConanFile):
             'OpenCV_ROOT_DIR': self.deps_cpp_info['opencv'].rootpath,
         }
 
-
         # Debug
         s = '\nAdditional Environment:\n'
         for k,v in env_vars.items():
@@ -209,7 +209,40 @@ class MrptConan(ConanFile):
 
         cmake.install()
 
-    def fixFindPackage(self, path):
+    def package(self):
+        # Fix up the CMake Find Script MRPT generated
+        cmake_file = os.path.join(self.package_folder, self.mrpt_cmake_rel_dir, 'MRPTConfig.cmake')
+        self.output.info('Inserting Conan variables in to the MRPT CMake Find script at %s'%cmake_file)
+        self._fixFindPackage(cmake_file)
+
+    def package_info(self):
+        # Add the directory with CMake.. Not sure if this is a good use of resdirs
+        self.cpp_info.resdirs = [os.path.join(self.package_folder, self.mrpt_cmake_rel_dir)]
+
+        # Populate the pkg-config environment variables
+        with tools.pythonpath(self):
+            from platform_helpers import adjustPath, appendPkgConfigPath
+
+            pkg_config_path = os.path.join(self.package_folder, 'lib', 'pkgconfig')
+            appendPkgConfigPath(adjustPath(pkg_config_path), self.env_info)
+
+            pc_files = glob.glob(adjustPath(os.path.join(pkg_config_path, '*.pc')))
+            for f in pc_files:
+                p_name = re.sub(r'\.pc$', '', os.path.basename(f))
+                p_name = re.sub(r'\W', '_', p_name.upper())
+                setattr(self.env_info, f'PKG_CONFIG_{p_name}_PREFIX', adjustPath(self.package_folder))
+
+            appendPkgConfigPath(adjustPath(pkg_config_path), self.env_info)
+
+    @property
+    def mrpt_cmake_rel_dir(self):
+        if 'Windows' == platform.system():
+            # On Windows, this CMake file is in a different place
+            return ''
+        else:
+            return os.path.join('share', 'mrpt')
+
+    def _fixFindPackage(self, path):
         """
         Insert some variables into the MRPT find script generated in the
         build so that we can use it in our CMake scripts
@@ -248,6 +281,28 @@ class MrptConan(ConanFile):
 # that can then be used by our OPAL_MRPT find script
 
 ''' + data
+
+
+            m = re.search(r'SET.MRPT_SOURCE_DIR "(.*)".', data)
+            if m:
+                # Source isn't installed, so no real point in fixing this..
+                data = data.replace(m.group(0), 'SET(MRPT_SOURCE_DIR "%s")'%self.source_folder)
+
+            m = re.search(r'SET.MRPT_LIBS_INCL_DIR "(.*)/include/mrpt".', data)
+            if m:
+                data = data.replace(m.group(0), 'SET(MRPT_LIBS_INCL_DIR "${CONAN_MRPT_ROOT}/include/mrpt")')
+            else:
+                self.output.warn('Could not repair MRPT_LIBS_INCL_DIR variable')
+
+            m = re.search(r'SET.MRPT_CONFIG_DIR "(.*)/include/mrpt/mrpt-config/".', data)
+            if m:
+                data = data.replace(m.group(0), 'SET(MRPT_CONFIG_DIR "${CONAN_MRPT_ROOT}/include/mrpt/mrpt-config/")')
+            else:
+                self.output.warn('Could not repair MRPT_CONFIG_DIR variable')
+
+            m = re.search(r'SET.MRPT_DIR "(?P<base>.*?)(?P<type>(package))(?P<rest>.*?(?="))', data)
+            if m:
+                data = data.replace(m.group('base') + t + m.group('rest'), '${CONAN_MRPT_ROOT}')
 
             m = re.search(r'INCLUDE_DIRECTORIES\("(?P<path>.*?eigen[^"]+)"\)', data)
             if m:
@@ -304,22 +359,5 @@ class MrptConan(ConanFile):
 set(MRPT_LIBRARIES ${MRPT_LIBS})'''
 
         with open(path, 'w') as f: f.write(data)
-
-    def package(self):
-        # Fix up the CMake Find Script MRPT generated
-        self.output.info('Inserting Conan variables in to the MRPT CMake Find script.')
-
-        if 'Visual Studio' == self.settings.compiler:
-            self.fixFindPackage(os.path.join(self.package_folder, 'MRPTConfig.cmake'))
-        else:
-            self.fixFindPackage(os.path.join(self.package_folder, 'share', 'mrpt', 'MRPTConfig.cmake'))
-
-    def package_info(self):
-        # Add the directory with CMake.. Not sure if this is a good use of resdirs
-        if 'Windows' == platform.system():
-            # On Windows, this CMake file is in a different place
-            self.cpp_info.resdirs = [self.package_folder]
-        else:
-            self.cpp_info.resdirs = [os.path.join(self.package_folder, 'share', 'mrpt')]
 
 # vim: ts=4 sw=4 expandtab ffs=unix ft=python foldmethod=marker :
