@@ -304,7 +304,7 @@ class MrptConan(ConanFile):
 
             m = re.search(r'SET.MRPT_DIR "(?P<base>.*?)(?P<type>(package))(?P<rest>.*?(?="))', data)
             if m:
-                data = data.replace(m.group('base') + t + m.group('rest'), '${CONAN_MRPT_ROOT}')
+                data = data.replace(m.group('base') + m.group('type') + m.group('rest'), '${CONAN_MRPT_ROOT}')
 
             m = re.search(r'INCLUDE_DIRECTORIES\("(?P<path>.*?eigen[^"]+)"\)', data)
             if m:
