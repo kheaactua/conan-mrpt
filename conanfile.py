@@ -213,7 +213,10 @@ class MrptConan(ConanFile):
 
     def package(self):
         # Fix up the CMake Find Script MRPT generated
-        cmake_src_file = os.path.join(self.build_folder, 'MRPTConfig.cmake')
+        if 'Windows' == platform.system():
+            cmake_src_file = os.path.join(self.build_folder, 'MRPTConfig.cmake')
+        else:
+            cmake_src_file = os.path.join(self.build_folder, 'unix-install', 'MRPTConfig.cmake')
         cmake_dst_file = os.path.join(self.package_folder, self.mrpt_cmake_rel_dir, 'MRPTConfig.cmake')
         self.output.info('Inserting Conan variables in to the MRPT CMake Find script at found at %s and writting to %s'%(cmake_src_file, cmake_dst_file))
         self._fixFindPackage(src=cmake_src_file, dst=cmake_dst_file)
@@ -239,6 +242,8 @@ class MrptConan(ConanFile):
 
     @property
     def mrpt_cmake_rel_dir(self):
+        """ Relative directory of the published (packaged) MRPTConfig.cmake file """
+
         if 'Windows' == platform.system():
             # On Windows, this CMake file is in a different place
             return ''
@@ -294,9 +299,9 @@ class MrptConan(ConanFile):
                 # Source isn't installed, so no real point in fixing this..
                 data = data.replace(m.group(0), 'SET(MRPT_SOURCE_DIR "%s")'%self.source_folder)
 
-            m = re.search(r'SET.MRPT_LIBS_INCL_DIR "(.*)/mrpt/libs".', data)
+            m = re.search(r'SET.MRPT_LIBS_INCL_DIR "(?P<CONAN_ROOT>(?P<base>.*?).(?P<type>(build|package)).(?P<hash>\w+).)(?P<rest>.*?(?="))".', data)
             if m:
-                data = data.replace(m.group(0), 'SET(MRPT_LIBS_INCL_DIR "${CONAN_MRPT_ROOT}/mrpt/libs")')
+                data = data.replace(m.group(0), 'SET(MRPT_LIBS_INCL_DIR "${CONAN_MRPT_ROOT}/%s")'%m.group('rest'))
             else:
                 self.output.warn('Could not repair MRPT_LIBS_INCL_DIR variable')
 
