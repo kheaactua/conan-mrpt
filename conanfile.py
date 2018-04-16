@@ -27,6 +27,11 @@ class MrptConan(ConanFile):
         'boost/[>1.46]@ntc/stable',
         'helpers/0.3@ntc/stable',
     )
+    build_requires = (
+        'pkg-config/0.29.2@ntc/stable',
+        'cmake_installer/[>3.2.0]@conan/stable',
+    )
+
     options = {
         'shared':      [True, False],
         'fPIC':        [True, False],
@@ -147,9 +152,6 @@ class MrptConan(ConanFile):
             except ConanException:
                 self.output.warn('Could not run system updates')
 
-
-    def build_requirements(self):
-        self.build_requires('pkg-config/0.29.2@ntc/stable')
 
     def build(self):
         vtk_major  = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
