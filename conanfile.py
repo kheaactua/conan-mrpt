@@ -213,9 +213,10 @@ class MrptConan(ConanFile):
 
     def package(self):
         # Fix up the CMake Find Script MRPT generated
-        cmake_file = os.path.join(self.package_folder, self.mrpt_cmake_rel_dir, 'MRPTConfig.cmake')
-        self.output.info('Inserting Conan variables in to the MRPT CMake Find script at %s'%cmake_file)
-        self._fixFindPackage(cmake_file)
+        cmake_src_file = os.path.join(self.build_folder, 'MRPTConfig.cmake')
+        cmake_dst_file = os.path.join(self.package_folder, self.mrpt_cmake_rel_dir, 'MRPTConfig.cmake')
+        self.output.info('Inserting Conan variables in to the MRPT CMake Find script at found at %s and writting to %s'%(cmake_src_file, cmake_dst_file))
+        self._fixFindPackage(src=cmake_src_file, dst=cmake_dst_file)
 
     def package_info(self):
         # Add the directory with CMake.. Not sure if this is a good use of resdirs
@@ -244,17 +245,20 @@ class MrptConan(ConanFile):
         else:
             return os.path.join('share', 'mrpt')
 
-    def _fixFindPackage(self, path):
+    def _fixFindPackage(self, src, dst):
         """
         Insert some variables into the MRPT find script generated in the
         build so that we can use it in our CMake scripts
+
+        @param src Source path of the find script
+        @param dst Destination (file we write to) of the find script
         """
 
-        if not os.path.exists(path):
-            self.output.warn('Could not fix non-existant file: %s'%path)
+        if not os.path.exists(src):
+            self.output.warn('Could not fix non-existant file: %s'%src)
             return
 
-        with open(path) as f: data = f.read()
+        with open(src) as f: data = f.read()
 
         if re.search(r'CONAN', data):
             self.output.info('MRPTConfig.cmake file already patched with Conan variables')
@@ -266,7 +270,7 @@ class MrptConan(ConanFile):
         else:
             m = re.search(r'SET.MRPT_DIR "(?P<base>.*?)(?P<type>(build|package))(?P<rest>.*?(?="))', data)
             if not m:
-                self.output.warn('Could not find MRPT source directory in CMake file: %s'%path)
+                self.output.warn('Could not find MRPT source directory in CMake file: %s'%src)
                 return
             for t in ['build', 'package']:
                 data = data.replace(m.group('base') + t + m.group('rest'), '${CONAN_MRPT_ROOT}')
@@ -290,21 +294,21 @@ class MrptConan(ConanFile):
                 # Source isn't installed, so no real point in fixing this..
                 data = data.replace(m.group(0), 'SET(MRPT_SOURCE_DIR "%s")'%self.source_folder)
 
-            m = re.search(r'SET.MRPT_LIBS_INCL_DIR "(.*)/include/mrpt".', data)
+            m = re.search(r'SET.MRPT_LIBS_INCL_DIR "(.*)/mrpt/libs".', data)
             if m:
-                data = data.replace(m.group(0), 'SET(MRPT_LIBS_INCL_DIR "${CONAN_MRPT_ROOT}/include/mrpt")')
+                data = data.replace(m.group(0), 'SET(MRPT_LIBS_INCL_DIR "${CONAN_MRPT_ROOT}/mrpt/libs")')
             else:
                 self.output.warn('Could not repair MRPT_LIBS_INCL_DIR variable')
 
-            m = re.search(r'SET.MRPT_CONFIG_DIR "(.*)/include/mrpt/mrpt-config/".', data)
+            m = re.search(r'SET.MRPT_CONFIG_DIR "(?P<CONAN_ROOT>(?P<base>.*?).(?P<type>(build|package)).(?P<hash>\w+).)(?P<rest>.*?(?="))".', data)
             if m:
-                data = data.replace(m.group(0), 'SET(MRPT_CONFIG_DIR "${CONAN_MRPT_ROOT}/include/mrpt/mrpt-config/")')
+                data = data.replace(m.group(0), 'SET(MRPT_CONFIG_DIR "${CONAN_MRPT_ROOT}/%s")'%m.group('rest'))
             else:
                 self.output.warn('Could not repair MRPT_CONFIG_DIR variable')
 
-            m = re.search(r'SET.MRPT_DIR "(?P<base>.*?)(?P<type>(package))(?P<rest>.*?(?="))', data)
+            m = re.search(r'SET.MRPT_DIR "(?P<CONAN_ROOT>(?P<base>.*?).(?P<type>(build|package)).(?P<hash>\w+).)(?P<rest>.*?(?="))".', data)
             if m:
-                data = data.replace(m.group('base') + m.group('type') + m.group('rest'), '${CONAN_MRPT_ROOT}')
+                data = data.replace(m.group(0), 'SET(MRPT_DIR "${CONAN_MRPT_ROOT}")')
 
             m = re.search(r'INCLUDE_DIRECTORIES\("(?P<path>.*?eigen[^"]+)"\)', data)
             if m:
@@ -360,6 +364,11 @@ class MrptConan(ConanFile):
 # Defining for forward-compatiblity
 set(MRPT_LIBRARIES ${MRPT_LIBS})'''
 
-        with open(path, 'w') as f: f.write(data)
+        if not os.path.exists(os.path.dirname(dst)):
+            # Not sure how this could not exist, but just in case..
+            os.makedirs(os.path.dirname(dst))
+
+        self.output.info('Outputting modified %s'%dst)
+        with open(dst, 'w+') as f: f.write(data)
 
 # vim: ts=4 sw=4 expandtab ffs=unix ft=python foldmethod=marker :
