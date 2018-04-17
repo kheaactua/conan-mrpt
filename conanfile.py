@@ -392,6 +392,10 @@ class MrptConan(ConanFile):
             else:
                 self.output.warn('Could not repair link to MRPT libs in MRPTConfig.cmake')
 
+            # Now, replace any free floating conan path, just in case some were missed here
+            data = data.replace(self.package_folder, '${CONAN_MRPT_ROOT}')
+            data = data.replace(cf.adjust_path(self.package_folder), '${CONAN_MRPT_ROOT}')
+
             data += '''
 
 # Defining for forward-compatiblity
