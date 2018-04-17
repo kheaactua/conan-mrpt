@@ -9,19 +9,18 @@ class MrptConan(ConanFile):
     Tested with versions 1.2.2, 1.4.0, 1.5.5.
     """
 
-    name = 'mrpt'
-    license = 'BSD'
-    url = 'http://www.mrpt.org/'
+    name        = 'mrpt'
+    license     = 'BSD'
+    url         = 'http://www.mrpt.org/'
     description = 'The Mobile Robot Programming Toolkit (MRPT) '
-    settings = 'os', 'compiler', 'build_type', 'arch'
-    generators = 'cmake'
-    requires = (
+    settings    = 'os', 'compiler', 'build_type', 'arch'
+    generators  = 'cmake'
+    requires    = (
         'eigen/[>=3.2.0]@ntc/stable',
         'vtk/[>=5.6.1]@ntc/stable',
         'freeglut/[>=3.0.0]@ntc/stable',
         'opencv/[>=2.4.9]@ntc/stable',
         'zlib/[>=1.2.11]@conan/stable',
-        'pcl/[>=1.7.0]@ntc/stable',
         'qt/[>=5.3.2]@ntc/stable',
         'flann/[>=1.6.8]@ntc/stable',
         'boost/[>1.46]@ntc/stable',
@@ -53,12 +52,19 @@ class MrptConan(ConanFile):
         else:
             self.requires('assimp/[>=3.1]@ntc/stable')
 
+        # Suddenly MRPT 1.2.2 no longer builds on Windows claiming an ambiguous
+        # type PointT in PbMapMaker.cpp.  As we don't use PCL MRPT functions
+        # right now, and MRPT has wasted an impressive amount of my time, I'm
+        # pushing off fixing this issue.
+        if (Version(str(self.version)) > '1.2.2') or (not 'Windows' == self.settings.os):
+            self.requires('pcl/[>=1.7.0]@ntc/stable')
+
     def config_options(self):
         if self.settings.compiler == "Visual Studio":
             self.options.remove("fPIC")
 
     def configure(self):
-        # I don't think this is a good idea anymore.
+        # I don't think specifying these is a good idea anymore.
         self.options['flann'].shared    = self.options.shared
         self.options['opencv'].shared   = self.options.shared
         self.options['boost'].shared    = self.options.shared
@@ -71,6 +77,9 @@ class MrptConan(ConanFile):
 
         if self.settings.compiler != "Visual Studio":
             self.options['boost'].fPIC = True
+
+        if (Version(str(self.version)) > '1.2.2') or (not 'Windows' == self.settings.os):
+            self.options['pcl'].shared   = self.options.shared
 
     def source(self):
         ext = 'tar.gz'
@@ -178,16 +187,17 @@ class MrptConan(ConanFile):
         cmake.definitions['BUILD_XSENS_MT3:BOOL'] = 'FALSE'
         cmake.definitions['BUILD_XSENS_MT4:BOOL'] = 'FALSE'
 
-        cmake.definitions['PCL_DIR:PATH']        = self.deps_cpp_info['pcl'].resdirs[0]
+        if 'pcl' in self.deps_cpp_info.deps:
+            cmake.definitions['PCL_DIR:PATH']    = self.deps_cpp_info['pcl'].resdirs[0]
         cmake.definitions['OpenCV_DIR:PATH']     = self.deps_cpp_info['opencv'].resdirs[0]
         cmake.definitions['VTK_DIR:PATH']        = os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}')
 
-        cmake.definitions['GLUT_INCLUDE_DIR']    = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include')
-        cmake.definitions['GLUT_glut_LIBRARY']   = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so')
+        cmake.definitions['GLUT_INCLUDE_DIR:PATH']  = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include')
+        cmake.definitions['GLUT_glut_LIBRARY:PATH'] = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so')
 
         cmake.definitions['Qt5Widgets_DIR:PATH'] = os.path.join(self.deps_cpp_info['qt'].rootpath, 'lib', 'cmake', 'Qt5Widgets')
 
-        cmake.definitions['ZLIB_ROOT']    = self.deps_cpp_info['zlib'].rootpath
+        cmake.definitions['ZLIB_ROOT'] = self.deps_cpp_info['zlib'].rootpath
 
         cmake.definitions['BUILD_ASSIMP:BOOL'] = 'FALSE'
         env_vars = {
