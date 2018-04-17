@@ -2,6 +2,7 @@ import os, sys, shutil, re, platform, glob
 from conans import ConanFile, CMake, tools
 from conans.model.version import Version
 from conans.errors import ConanException
+import conans.client.build.compiler_flags as cf
 
 
 class MrptConan(ConanFile):
@@ -237,18 +238,18 @@ class MrptConan(ConanFile):
 
         # Populate the pkg-config environment variables
         with tools.pythonpath(self):
-            from platform_helpers import adjustPath, appendPkgConfigPath
+            from platform_helpers import appendPkgConfigPath
 
             pkg_config_path = os.path.join(self.package_folder, 'lib', 'pkgconfig')
-            appendPkgConfigPath(adjustPath(pkg_config_path), self.env_info)
+            appendPkgConfigPath(cf.adjust_path(pkg_config_path), self.env_info)
 
-            pc_files = glob.glob(adjustPath(os.path.join(pkg_config_path, '*.pc')))
+            pc_files = glob.glob(cf.adjust_path(os.path.join(pkg_config_path, '*.pc')))
             for f in pc_files:
                 p_name = re.sub(r'\.pc$', '', os.path.basename(f))
                 p_name = re.sub(r'\W', '_', p_name.upper())
-                setattr(self.env_info, f'PKG_CONFIG_{p_name}_PREFIX', adjustPath(self.package_folder))
+                setattr(self.env_info, f'PKG_CONFIG_{p_name}_PREFIX', cf.adjust_path(self.package_folder))
 
-            appendPkgConfigPath(adjustPath(pkg_config_path), self.env_info)
+            appendPkgConfigPath(cf.adjust_path(pkg_config_path), self.env_info)
 
     @property
     def mrpt_cmake_rel_dir(self):
@@ -307,7 +308,7 @@ class MrptConan(ConanFile):
             m = re.search(r'SET.MRPT_SOURCE_DIR "(.*)".', data)
             if m:
                 # Source isn't installed, so no real point in fixing this..
-                data = data.replace(m.group(0), 'SET(MRPT_SOURCE_DIR "%s")'%self.source_folder)
+                data = data.replace(m.group(0), 'SET(MRPT_SOURCE_DIR "%s")'%cf.adjust_path(self.source_folder))
 
             m = re.search(r'SET.MRPT_LIBS_INCL_DIR "(?P<CONAN_ROOT>(?P<base>.*?).(?P<type>(build|package)).(?P<hash>\w+).)(?P<rest>.*?(?="))".', data)
             if m:
