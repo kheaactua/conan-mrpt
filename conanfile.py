@@ -374,9 +374,9 @@ class MrptConan(ConanFile):
             else:
                 self.output.warn('Could not repair reference to MRPT include directory in MRPTConfig.cmake')
 
-            m = re.search(r'LINK_DIRECTORIES\(\${wxWidgets_LIBRARY_DIRS}\)', data)
+            m = re.search(r'(?=\w)LINK_DIRECTORIES\(\${wxWidgets_LIBRARY_DIRS}\)', data)
             if m:
-                data = data.replace(m.group(0), 'list(APPEND MRPT_INCLUDE_DIRS "%s")'%'list(APPEND MRPT_LINK_DIRECTORIES ${wxWidgets_LIBRARY_DIRS})')
+                data = data.replace(m.group(0), 'list(APPEND MRPT_INCLUDE_DIRS "%s")'%'${wxWidgets_LIBRARY_DIRS}')
             else:
                 self.output.warn('Could not repair the link to wxWidget in MRPTConfig.cmake')
 
