@@ -162,8 +162,14 @@ class MrptConan(ConanFile):
             except ConanException:
                 self.output.warn('Could not run system updates')
 
+    def _set_up_cmake(self):
+        """
+        Normally this would be in build, but because we often have to
+        re-run pacakging (MRPT has been annoying), and packaging is more or
+        less done with cmake.install(), we need the CMake object to be
+        available to us in both the build() and package() methods
+        """
 
-    def build(self):
         vtk_major  = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
 
         cmake = CMake(self)
@@ -205,6 +211,12 @@ class MrptConan(ConanFile):
             'OpenCV_ROOT_DIR': self.deps_cpp_info['opencv'].rootpath,
         }
 
+        return cmake, env_vars
+
+    def build(self):
+
+        cmake, env_vars = self._set_up_cmake()
+
         # Debug
         s = '\nAdditional Environment:\n'
         for k,v in env_vars.items():
@@ -220,9 +232,14 @@ class MrptConan(ConanFile):
             cmake.configure(source_folder=self.name)
             cmake.build()
 
+    def package(self):
+
+        # Use cmake's install target
+        cmake, env_vars = self._set_up_cmake()
+        with tools.environment_append(env_vars):
+            cmake.configure(source_folder=os.path.join(self.build_folder, self.name), build_folder=self.build_folder)
         cmake.install()
 
-    def package(self):
         # Fix up the CMake Find Script MRPT generated
         if 'Windows' == platform.system():
             cmake_src_file = os.path.join(self.build_folder, 'MRPTConfig.cmake')
