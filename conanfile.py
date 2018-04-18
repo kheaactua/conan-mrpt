@@ -354,7 +354,23 @@ class MrptConan(ConanFile):
 
             m = re.search(r'SET.MRPT_CONFIG_DIR "(?P<CONAN_ROOT>(?P<base>.*?).(?P<type>(build|package)).(?P<hash>\w+).)(?P<rest>.*?(?="))".', data)
             if m:
-                data = data.replace(m.group(0), 'SET(MRPT_CONFIG_DIR "${CONAN_MRPT_ROOT}/%s")'%m.group('rest'))
+                # Similar to above, the specified path [on Windows],
+                # <base>/include/mrpt-config/win32/ doesn't exist, and the
+                # files seem to actually be in <base>/include/mrpt/mrpt-config/
+                # So, check if the specified one exists, and if not, attempt the backup
+                mrpt_config_path = None
+                if os.path.exists(os.path.join(self.package_folder, *(m.group('rest').split('/')))):
+                    mrpt_config_path = m.group('rest')
+                    self.output.info('Default MRPT_CONFIG_DIR was found, using %s'%mrpt_config_path)
+                else:
+                    if os.path.exists(os.path.join(self.package_folder, 'include', 'mrpt', 'mrpt-config')):
+                        mrpt_config_path = '/'.join(['include', 'mrpt', 'mrpt-config']) # cmake prefers '/'
+                        self.output.info('Modified MRPT_CONFIG_DIR was found, using %s'%mrpt_config_path)
+
+                if mrpt_config_path is None:
+                    raise ConanException('Could not find suitable MRPT_CONFIG_DIR')
+
+                data = data.replace(m.group(0), 'SET(MRPT_CONFIG_DIR "${CONAN_MRPT_ROOT}/%s")'%mrpt_config_path)
             else:
                 self.output.warn('Could not repair MRPT_CONFIG_DIR variable')
 
