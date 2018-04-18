@@ -329,7 +329,26 @@ class MrptConan(ConanFile):
 
             m = re.search(r'SET.MRPT_LIBS_INCL_DIR "(?P<CONAN_ROOT>(?P<base>.*?).(?P<type>(build|package)).(?P<hash>\w+).)(?P<rest>.*?(?="))".', data)
             if m:
-                data = data.replace(m.group(0), 'SET(MRPT_LIBS_INCL_DIR "${CONAN_MRPT_ROOT}/%s")'%m.group('rest'))
+                # This one is weird, though I swear this used to work, now it
+                # points to a non-existent path.  Specifically, it points to
+                # <base>/mrpt/libs, when stuff is found at <base>/libs.
+                # So, do some checking here to see what should be the right path.
+                lib_inc_path = None
+                if os.path.exists(os.path.join(self.package_folder, *(m.group('rest').split('/')))):
+                    lib_inc_path = m.group('rest')
+                    self.output.info('Default MRPT_LIBS_INCL_DIR was found, using %s'%lib_inc_path)
+                else:
+                    # Check for the leading mrpt, and remove it
+                    parts = m.group('rest').split('/')
+                    if parts[0] == 'mrpt':
+                        if not os.path.join(self.package_folder, *parts[1:]):
+                            raise ConanException('Could not find MRPT_LIBS_INCL_DIR at %s or %s'%(m.group('rest'), '/'.join(parts[1:])))
+                        lib_inc_path = '/'.join(parts[1:]) # cmake always prefers '/'
+                        self.output.info('Modified MRPT_LIBS_INCL_DIR was found, using %s'%lib_inc_path)
+
+                if lib_inc_path is None:
+                    raise ConanException('Could not find suitable MRPT_LIBS_INCL_DIR')
+                data = data.replace(m.group(0), 'SET(MRPT_LIBS_INCL_DIR "${CONAN_MRPT_ROOT}/%s")'%lib_inc_path)
             else:
                 self.output.warn('Could not repair MRPT_LIBS_INCL_DIR variable')
 
