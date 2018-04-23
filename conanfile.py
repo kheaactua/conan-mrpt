@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: future_fstrings -*-
+# -*- coding: utf-8 -*-
+
 import os, sys, shutil, re, platform, glob
 from conans import ConanFile, CMake, tools
 from conans.model.version import Version
