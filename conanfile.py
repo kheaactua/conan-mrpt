@@ -206,9 +206,6 @@ class MrptConan(ConanFile):
         cmake.definitions['OpenCV_DIR:PATH']     = self.deps_cpp_info['opencv'].resdirs[0]
         cmake.definitions['VTK_DIR:PATH']        = os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}')
 
-        # Eigen is found via pkg-config, but MRPT still gets the include path wrong on 14.04
-        cmake.definitions['EIGEN_INCLUDE_DIRS:PATH'] = adjustPath(os.path.join(self.deps_cpp_info['eigen'].rootpath, 'include', 'eigen3'))
-
         cmake.definitions['GLUT_INCLUDE_DIR:PATH']  = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include')
         cmake.definitions['GLUT_glut_LIBRARY:PATH'] = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so')
 
@@ -231,6 +228,12 @@ class MrptConan(ConanFile):
         s = '\nAdditional Environment:\n'
         for k,v in env_vars.items():
             s += ' - %s=%s\n'%(k, v)
+        self.output.info(s)
+
+        s = '\nRelated pkg-config Environment Variables:\n'
+        for k,v in os.environ.items():
+            if re.search('PKG_CONFIG', k):
+                s += ' - %s=%s\n'%(k, v)
         self.output.info(s)
 
         s = '\nCMake Definitions:\n'
