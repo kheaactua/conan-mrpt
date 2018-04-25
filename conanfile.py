@@ -57,12 +57,15 @@ class MrptConan(ConanFile):
         else:
             self.requires('assimp/[>=3.1]@ntc/stable')
 
-        # Suddenly MRPT 1.2.2 no longer builds on Windows claiming an ambiguous
-        # type PointT in PbMapMaker.cpp.  As we don't use PCL MRPT functions
-        # right now, and MRPT has wasted an impressive amount of my time, I'm
-        # pushing off fixing this issue.
-        if (Version(str(self.version)) > '1.2.2') or (not 'Windows' == self.settings.os):
-            self.requires('pcl/[>=1.7.0]@ntc/stable')
+        # Inexplicably, PCL is sometimes not found by MRPT (the include paths
+        # aren't working despite being correct.)  So disabling PCL for now.
+        # TODO Renable PCL
+        # # Suddenly MRPT 1.2.2 no longer builds on Windows claiming an ambiguous
+        # # type PointT in PbMapMaker.cpp.  As we don't use PCL MRPT functions
+        # # right now, and MRPT has wasted an impressive amount of my time, I'm
+        # # pushing off fixing this issue.
+        # if (Version(str(self.version)) > '1.2.2') or (not 'Windows' == self.settings.os):
+        #     self.requires('pcl/[>=1.7.0]@ntc/stable')
 
     def config_options(self):
         if self.settings.compiler == "Visual Studio":
@@ -183,7 +186,7 @@ class MrptConan(ConanFile):
         if self.options.cxx11:
             cmake.definitions['CMAKE_CXX_STANDARD'] = 11
 
-        # Reported as unused by cmake
+        # Reported as unused by cmake, but there is a message from the cmake output to use them
         cmake.definitions['BOOST_DYNAMIC:BOOL']        = 'TRUE' if self.options['boost'].shared else 'FALSE'
         cmake.definitions['BOOST_ROOT:PATH']           = self.deps_cpp_info['boost'].rootpath
         #
@@ -202,6 +205,9 @@ class MrptConan(ConanFile):
             cmake.definitions['PCL_DIR:PATH']    = self.deps_cpp_info['pcl'].resdirs[0]
         cmake.definitions['OpenCV_DIR:PATH']     = self.deps_cpp_info['opencv'].resdirs[0]
         cmake.definitions['VTK_DIR:PATH']        = os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}')
+
+        # Eigen is found via pkg-config, but MRPT still gets the include path wrong on 14.04
+        cmake.definitions['EIGEN_INCLUDE_DIRS:PATH'] = adjustPath(os.path.join(self.deps_cpp_info['eigen'].rootpath, 'include', 'eigen3'))
 
         cmake.definitions['GLUT_INCLUDE_DIR:PATH']  = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include')
         cmake.definitions['GLUT_glut_LIBRARY:PATH'] = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so')
