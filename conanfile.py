@@ -59,7 +59,7 @@ class MrptConan(ConanFile):
 
         # Inexplicably, PCL is sometimes not found by MRPT (the include paths
         # aren't working despite being correct.)  So disabling PCL for now.
-        # TODO Renable PCL
+        # TODO Re-enable PCL
         # # Suddenly MRPT 1.2.2 no longer builds on Windows claiming an ambiguous
         # # type PointT in PbMapMaker.cpp.  As we don't use PCL MRPT functions
         # # right now, and MRPT has wasted an impressive amount of my time, I'm
@@ -134,6 +134,10 @@ class MrptConan(ConanFile):
             replace='/Zm300',
         )
 
+        if self.settings.compiler == 'gcc':
+            import cmake_helpers
+            cmake_helpers.wrapCMakeFile(os.path.join(self.source_folder, self.name), output_func=self.output.info)
+
     def system_requirements(self):
         pack_names = None
         if tools.os_info.linux_distro == "ubuntu":
@@ -185,6 +189,12 @@ class MrptConan(ConanFile):
             cmake.definitions['CMAKE_POSITION_INDEPENDENT_CODE'] = 'ON'
         if self.options.cxx11:
             cmake.definitions['CMAKE_CXX_STANDARD'] = 11
+
+        if self.settings.compiler == 'gcc':
+            cmake.definitions['ADDITIONAL_CXX_FLAGS:STRING'] = ' '.join([
+                '-frecord-gcc-switches',
+                '-Wno-deprecated-declarations'
+            ])
 
         # Reported as unused by cmake, but there is a message from the cmake output to use them
         cmake.definitions['BOOST_DYNAMIC:BOOL']        = 'TRUE' if self.options['boost'].shared else 'FALSE'
