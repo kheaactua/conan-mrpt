@@ -29,6 +29,7 @@ class MrptConan(ConanFile):
         'qt/[>=5.3.2]@ntc/stable',
         'flann/[>=1.6.8]@ntc/stable',
         'boost/[>1.46]@ntc/stable',
+        'libjpeg/9b@lasote/stable',
         'helpers/0.3@ntc/stable',
     )
     build_requires = (
@@ -82,6 +83,7 @@ class MrptConan(ConanFile):
         self.options['assimp'].shared   = self.options.shared
         self.options['opencv'].shared   = self.options.shared
         self.options['zlib'].shared     = self.options.shared
+        self.options['libjpeg'].shared  = self.options.shared
 
         if self.settings.compiler != "Visual Studio":
             self.options['boost'].fPIC = True
@@ -227,6 +229,11 @@ class MrptConan(ConanFile):
         env_vars = {
             'OpenCV_ROOT_DIR': self.deps_cpp_info['opencv'].rootpath,
         }
+
+        # Include our own libjpeg so that the linking across different systems
+        # isn't an issue
+        cmake.definitions['JPEG_INCLUDE_DIR:PATH'] = os.path.join(self.deps_cpp_info['libjpeg'].rootpath, 'include')
+        cmake.definitions['JPEG_LIBRARY:FILEPATH'] = os.path.join(self.deps_cpp_info['libjpeg'].rootpath, 'lib', 'libjpeg.so' if self.options['libjpeg'].shared else 'libjpeg.a')
 
         return cmake, env_vars
 
