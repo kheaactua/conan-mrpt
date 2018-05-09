@@ -18,8 +18,7 @@ class MrptConan(ConanFile):
     license     = 'BSD'
     url         = 'http://www.mrpt.org/'
     description = 'The Mobile Robot Programming Toolkit (MRPT) '
-    settings    = 'os', 'compiler', 'build_type', 'arch'
-    generators  = 'cmake'
+    settings    = 'os', 'compiler', 'build_type', 'arch', 'arch_build'
     requires    = (
         'eigen/[>=3.2.0]@ntc/stable',
         'vtk/[>=5.6.1]@ntc/stable',
@@ -34,7 +33,6 @@ class MrptConan(ConanFile):
     )
     build_requires = (
         'pkg-config/0.29.2@ntc/stable',
-        'cmake_installer/[>3.2.0]@conan/stable',
     )
 
     options = {
@@ -50,17 +48,25 @@ class MrptConan(ConanFile):
         'build_tests=False',
     )
 
-    def requirements(self):
-        if 'x86' == self.settings.arch and 'Linux' == self.settings.os:
-            # On Linux 32, assimp seems to not be building with c++11, which
-            # causes a bunch of problems
-            self.requires('assimp/[>=3.1,<4.0]@ntc/stable')
+    def build_requirements(self):
+        if self.settings.arch_build == 'x86':
+            self.build_requires('cmake_installer/[>3.2.0,<=3.6.3]@conan/stable')
         else:
-            self.requires('assimp/[>=3.1]@ntc/stable')
+            self.build_requires('cmake_installer/[>3.2.0]@conan/stable')
+
+    def requirements(self):
+        if not ('Windows' == self.settings.os and 'x86' == self.settings.arch_build):
+            # MRPT v1.2.2 just won't find assimp.lib on win32.
+            if 'x86' == self.settings.arch and 'Linux' == self.settings.os:
+                # On Linux 32, assimp seems to not be building with c++11, which
+                # causes a bunch of problems
+                self.requires('assimp/[>=3.1,<4.0]@ntc/stable')
+            else:
+                self.requires('assimp/[>=3.1]@ntc/stable')
 
         # Inexplicably, PCL is sometimes not found by MRPT (the include paths
         # aren't working despite being correct.)  So disabling PCL for now.
-        # TODO Re-enable PCL
+        # TODO Re-enable PCL.  This may have been a pkg-config issue
         # # Suddenly MRPT 1.2.2 no longer builds on Windows claiming an ambiguous
         # # type PointT in PbMapMaker.cpp.  As we don't use PCL MRPT functions
         # # right now, and MRPT has wasted an impressive amount of my time, I'm
@@ -225,7 +231,9 @@ class MrptConan(ConanFile):
 
         cmake.definitions['ZLIB_ROOT'] = self.deps_cpp_info['zlib'].rootpath
 
-        cmake.definitions['BUILD_ASSIMP:BOOL'] = 'FALSE'
+        if not ('Windows' == self.settings.os and 'x86' == self.settings.arch_build):
+            # MRPT v1.2.2 just won't find assimp.lib on win32.
+            cmake.definitions['BUILD_ASSIMP:BOOL'] = 'FALSE'
         env_vars = {
             'OpenCV_ROOT_DIR': self.deps_cpp_info['opencv'].rootpath,
         }
