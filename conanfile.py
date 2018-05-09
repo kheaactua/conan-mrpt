@@ -111,11 +111,7 @@ class MrptConan(ConanFile):
             shutil.copy(local_copy, os.path.join(self.source_folder, archive))
         else:
             tools.download(url=archive_url, filename=archive)
-            try:
-                tools.check_md5(archive, hashes[self.version])
-            except ConanException as e:
-                self.output.error(e)
-                sys.exit(-1)
+            tools.check_md5(archive, hashes[self.version])
 
         tools.unzip(archive)
         shutil.move(f'mrpt-{self.version}', self.name)
