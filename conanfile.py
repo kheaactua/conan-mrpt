@@ -31,9 +31,6 @@ class MrptConan(ConanFile):
         'libjpeg/9b@lasote/stable',
         'helpers/0.3@ntc/stable',
     )
-    build_requires = (
-        'pkg-config/0.29.2@ntc/stable',
-    )
 
     options = {
         'shared':      [True, False],
@@ -49,13 +46,14 @@ class MrptConan(ConanFile):
     )
 
     def build_requirements(self):
+        self.build_requires('pkg-config/0.29.2@ntc/stable')
         if self.settings.arch_build == 'x86':
             self.build_requires('cmake_installer/[>3.2.0,<=3.6.3]@conan/stable')
         else:
             self.build_requires('cmake_installer/[>3.2.0]@conan/stable')
 
     def requirements(self):
-        if not ('Windows' == self.settings.os and 'x86' == self.settings.arch_build):
+        if not ('Windows' == self.settings.os and 'x86' == self.settings.arch):
             # MRPT v1.2.2 just won't find assimp.lib on win32.
             if 'x86' == self.settings.arch and 'Linux' == self.settings.os:
                 # On Linux 32, assimp seems to not be building with c++11, which
@@ -231,7 +229,7 @@ class MrptConan(ConanFile):
 
         cmake.definitions['ZLIB_ROOT'] = self.deps_cpp_info['zlib'].rootpath
 
-        if not ('Windows' == self.settings.os and 'x86' == self.settings.arch_build):
+        if not ('Windows' == self.settings.os and 'x86' == self.settings.arch):
             # MRPT v1.2.2 just won't find assimp.lib on win32.
             cmake.definitions['BUILD_ASSIMP:BOOL'] = 'FALSE'
         env_vars = {
