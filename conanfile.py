@@ -227,6 +227,9 @@ class MrptConan(ConanFile):
 
         if not ('Windows' == self.settings.os and 'x86' == self.settings.arch):
             # MRPT v1.2.2 just won't find assimp.lib on win32.
+            # TODO I suspect this was an issue with assimp's pkg-config file.
+            #      Now that that is fixed, this exception  "if not windows 32"
+            #      exception # can probably be removed.
             cmake.definitions['BUILD_ASSIMP:BOOL'] = 'FALSE'
         env_vars = {
             'OpenCV_ROOT_DIR': self.deps_cpp_info['opencv'].rootpath,
