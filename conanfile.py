@@ -157,8 +157,12 @@ class MrptConan(ConanFile):
             pack_names = [
                 'libftdi-dev', 'libusb-1.0-0-dev', 'libudev-dev',
                 'libfreenect-dev', 'libdc1394-22-dev', 'libavformat-dev',
-                'libswscale-dev', 'libjpeg-dev', 'libsuitesparse-dev',
-                'libpcap-dev',
+                'libswscale-dev', 'libjpeg-dev', 'libpcap-dev',
+                # 'libsuitesparse-dev', # Commenting out for now, better to
+                                        # supply this with conan if it's
+                                        # required, otherwise it's not properly
+                                        # packaged into to the 3DRi installer
+                                        # package
             ]
 
             if self.settings.arch == "x86":
@@ -224,6 +228,10 @@ class MrptConan(ConanFile):
         cmake.definitions['Qt5Widgets_DIR:PATH'] = os.path.join(self.deps_cpp_info['qt'].rootpath, 'lib', 'cmake', 'Qt5Widgets')
 
         cmake.definitions['ZLIB_ROOT'] = self.deps_cpp_info['zlib'].rootpath
+
+        # Disabling SuiteSparse.  We (ntc) don't use it.  If we ever need it,
+        # we'll supply it with a conan package rather than a system lib.
+        cmake.definitions['SUITESPARSE_USE_FIND_MODULE'] = 'FALSE'
 
         if not ('Windows' == self.settings.os and 'x86' == self.settings.arch):
             # MRPT v1.2.2 just won't find assimp.lib on win32.
@@ -433,7 +441,9 @@ class MrptConan(ConanFile):
 
             m = re.search(r'INCLUDE_DIRECTORIES\("(?P<suitesparse>[^"]+)"\) # SuiteSparse\w+', data)
             if m:
-                # Note: We may want to replace this with a Conan package for SuiteSparse in the future
+                # Note: We may want to replace this with a Conan package for
+                # SuiteSparse in the future, especially considering by default
+                # this points at the wrong place anyways.
                 data = data.replace(m.group(0), 'list(APPEND MRPT_INCLUDE_DIRS "%s") # SuiteSparse_INCLUDE_DIRS'%m.group('suitesparse'))
             else:
                 self.output.warn('Could not repair reference to SuiteSparse directory in MRPTConfig.cmake')
