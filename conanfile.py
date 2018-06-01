@@ -45,13 +45,6 @@ class MrptConan(ConanFile):
         'build_tests=False',
     )
 
-    def build_requirements(self):
-        self.build_requires('pkg-config/0.29.2@ntc/stable')
-        if self.settings.arch_build == 'x86':
-            self.build_requires('cmake_installer/[>3.2.0,<=3.6.3]@conan/stable')
-        else:
-            self.build_requires('cmake_installer/[>3.2.0]@conan/stable')
-
     def requirements(self):
         if not ('Windows' == self.settings.os and 'x86' == self.settings.arch):
             # MRPT v1.2.2 just won't find assimp.lib on win32.
