@@ -2,7 +2,7 @@
 # -*- coding: future_fstrings -*-
 # -*- coding: utf-8 -*-
 
-import os, sys, shutil, re, platform, glob
+import os, shutil, re, platform, glob
 from conans import ConanFile, CMake, tools
 from conans.model.version import Version
 from conans.errors import ConanException
@@ -25,7 +25,6 @@ class MrptConan(ConanFile):
         'freeglut/[>=3.0.0]@ntc/stable',
         'opencv/[>=2.4.9]@ntc/stable',
         'zlib/[>=1.2.11]@conan/stable',
-        'qt/[>=5.3.2]@ntc/stable',
         'flann/[>=1.6.8]@ntc/stable',
         'boost/[>1.46]@ntc/stable',
         'libjpeg/9b@lasote/stable',
@@ -37,12 +36,14 @@ class MrptConan(ConanFile):
         'fPIC':        [True, False],
         'cxx11':       [True, False],
         'build_tests': [True, False],
+        'with_qt':     [True, False],
     }
     default_options = (
         'shared=True',
         'fPIC=True',
         'cxx11=True',
         'build_tests=False',
+        'with_qt=False',
     )
 
     def requirements(self):
@@ -54,6 +55,9 @@ class MrptConan(ConanFile):
                 self.requires('assimp/[>=3.1,<4.0]@ntc/stable')
             else:
                 self.requires('assimp/[>=3.1]@ntc/stable')
+
+        if self.options.with_qt:
+            self.requires('qt/[>=5.3.2]@ntc/stable')
 
         # Inexplicably, PCL is sometimes not found by MRPT (the include paths
         # aren't working despite being correct.)  So disabling PCL for now.
