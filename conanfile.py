@@ -27,7 +27,7 @@ class MrptConan(ConanFile):
         'zlib/[>=1.2.11]@conan/stable',
         'flann/[>=1.6.8]@ntc/stable',
         'boost/[>1.46]@ntc/stable',
-        'libjpeg/9b@lasote/stable',
+        'libjpeg/9b@lasote/stable', # Doesn't seem to actually be used (at least not linked to)
         'helpers/0.3@ntc/stable',
     )
 
