@@ -75,22 +75,11 @@ class MrptConan(ConanFile):
 
     def configure(self):
         # I don't think specifying these is a good idea anymore.
-        self.options['flann'].shared    = self.options.shared
-        self.options['opencv'].shared   = self.options.shared
-        self.options['boost'].shared    = self.options.shared
-        self.options['freeglut'].shared = self.options.shared
-        self.options['vtk'].shared      = self.options.shared
-        self.options['pcl'].shared      = self.options.shared
         self.options['assimp'].shared   = self.options.shared
         self.options['opencv'].shared   = self.options.shared
-        self.options['zlib'].shared     = self.options.shared
-        self.options['libjpeg'].shared  = self.options.shared
 
-        if self.settings.compiler != "Visual Studio":
-            self.options['boost'].fPIC = True
-
-        if (Version(str(self.version)) > '1.2.2') or (not 'Windows' == self.settings.os):
-            self.options['pcl'].shared   = self.options.shared
+        if Version(str(self.version)) == '1.2.2' and 'Windows' == self.settings.os:
+            self.options['pcl'].shared = False
 
     def source(self):
         ext = 'tar.gz'
