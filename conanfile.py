@@ -211,7 +211,8 @@ class MrptConan(ConanFile):
         cmake.definitions['GLUT_INCLUDE_DIR:PATH']  = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include')
         cmake.definitions['GLUT_glut_LIBRARY:PATH'] = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so')
 
-        cmake.definitions['Qt5Widgets_DIR:PATH'] = os.path.join(self.deps_cpp_info['qt'].rootpath, 'lib', 'cmake', 'Qt5Widgets')
+        if self.options.with_qt:
+            cmake.definitions['Qt5Widgets_DIR:PATH'] = os.path.join(self.deps_cpp_info['qt'].rootpath, 'lib', 'cmake', 'Qt5Widgets')
 
         cmake.definitions['ZLIB_ROOT'] = self.deps_cpp_info['zlib'].rootpath
 
