@@ -27,7 +27,7 @@ class MrptConan(ConanFile):
         'zlib/[>=1.2.11]@conan/stable',
         'flann/[>=1.6.8]@ntc/stable',
         'boost/[>1.46]@ntc/stable',
-        'libjpeg/9b@lasote/stable', # Doesn't seem to actually be used (at least not linked to)
+        'libjpeg/9b@lasote/stable', # Doesn't seem to actually be used (at least not linked to), and libjpeg is in the system reqs
         'helpers/0.3@ntc/stable',
     )
 
@@ -133,7 +133,7 @@ class MrptConan(ConanFile):
             # (removed from here because we provide our own: libopencv-dev,
             # libeigen3-dev, libgtest-dev)
             pack_names = [
-                'build-essential', 'pkg-config', 'cmake', 'libwxgtk3.0-dev'
+                'build-essential', 'libwxgtk3.0-dev'
             ]
 
             # Additional
