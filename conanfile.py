@@ -133,7 +133,7 @@ class MrptConan(ConanFile):
             # (removed from here because we provide our own: libopencv-dev,
             # libeigen3-dev, libgtest-dev)
             pack_names = [
-                'build-essential', 'libwxgtk3.0-dev'
+                'build-essential', 'libwxgtk3.0-dev', # libwxgtk-media3.0-0
             ]
 
             # Additional
