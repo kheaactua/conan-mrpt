@@ -220,6 +220,9 @@ class MrptConan(ConanFile):
         # we'll supply it with a conan package rather than a system lib.
         cmake.definitions['SUITESPARSE_USE_FIND_MODULE'] = 'FALSE'
 
+        # Disable wxwidgets
+        cmake.definitions['DISABLE_WXWIDGETS:BOOL'] = 'OFF'
+
         if not ('Windows' == self.settings.os and 'x86' == self.settings.arch):
             # MRPT v1.2.2 just won't find assimp.lib on win32.
             # TODO I suspect this was an issue with assimp's pkg-config file.
