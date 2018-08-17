@@ -21,7 +21,6 @@ class MrptConan(ConanFile):
     settings    = 'os', 'compiler', 'build_type', 'arch', 'arch_build'
     requires    = (
         'eigen/[>=3.2.0]@ntc/stable',
-        'vtk/[>=5.6.1]@ntc/stable',
         'freeglut/[>=3.0.0]@ntc/stable',
         'opencv/[>=2.4.9]@ntc/stable',
         'zlib/[>=1.2.11]@conan/stable',
@@ -37,6 +36,8 @@ class MrptConan(ConanFile):
         'cxx11':       [True, False],
         'build_tests': [True, False],
         'with_qt':     [True, False],
+        'with_vtk':    [True, False],
+        'with_assimp': [True, False],
     }
     default_options = (
         'shared=True',
@@ -44,17 +45,23 @@ class MrptConan(ConanFile):
         'cxx11=True',
         'build_tests=False',
         'with_qt=False',
+        'with_vtk=False',
+        'with_assimp=False',
     )
 
     def requirements(self):
-        if not ('Windows' == self.settings.os and 'x86' == self.settings.arch):
-            # MRPT v1.2.2 just won't find assimp.lib on win32.
-            if 'x86' == self.settings.arch and 'Linux' == self.settings.os:
-                # On Linux 32, assimp seems to not be building with c++11, which
-                # causes a bunch of problems
-                self.requires('assimp/[>=3.1,<4.0]@ntc/stable')
-            else:
-                self.requires('assimp/[>=3.1]@ntc/stable')
+        if self.options.with_assimp:
+            if not ('Windows' == self.settings.os and 'x86' == self.settings.arch):
+                # MRPT v1.2.2 just won't find assimp.lib on win32.
+                if 'x86' == self.settings.arch and 'Linux' == self.settings.os:
+                    # On Linux 32, assimp seems to not be building with c++11, which
+                    # causes a bunch of problems
+                    self.requires('assimp/[>=3.1,<4.0]@ntc/stable')
+                else:
+                    self.requires('assimp/[>=3.1]@ntc/stable')
+
+        if self.options.with_vtk:
+            self.requires('vtk/[>=5.6.1]@ntc/stable')
 
         if self.options.with_qt:
             self.requires('qt/[>=5.3.2]@ntc/stable')
@@ -74,10 +81,6 @@ class MrptConan(ConanFile):
             self.options.remove("fPIC")
 
     def configure(self):
-        # I don't think specifying these is a good idea anymore.
-        self.options['assimp'].shared   = self.options.shared
-        self.options['opencv'].shared   = self.options.shared
-
         if Version(str(self.version)) == '1.2.2' and 'Windows' == self.settings.os:
             self.options['pcl'].shared = False
 
@@ -102,18 +105,19 @@ class MrptConan(ConanFile):
         tools.unzip(archive)
         shutil.move(f'mrpt-{self.version}', self.name)
 
-        vtk_release = int(self.deps_cpp_info['vtk'].version.split('.')[0])
-        if vtk_release < 7:
-            # Need to add find_package(Qt5Widgets).  I think the HEAD of OpenCV
-            # does this, but 1.5.5- doesn't.  I believe this is required because
-            # VTK injects dependencies to it, and no matter how hard I try, I can't
-            # seem to build without VTK or this dependency.  I don't recall
-            # seeing this after VTK v7 though.
-            self.output.info('Injecting a find_package(Qt5Widgets) due to VTK 6')
-            file = os.path.join(self.name, 'cmakemodules/DeclareMRPTLib.cmake')
-            with open(file) as f: data = f.read()
-            data = 'find_package(Qt5Widgets)\n\n' + data
-            with open(file, 'w') as f: f.write(data)
+        if 'vtk' in self.deps_cpp_info.deps:
+            vtk_release = int(self.deps_cpp_info['vtk'].version.split('.')[0])
+            if vtk_release < 7:
+                # Need to add find_package(Qt5Widgets).  I think the HEAD of OpenCV
+                # does this, but 1.5.5- doesn't.  I believe this is required because
+                # VTK injects dependencies to it, and no matter how hard I try, I can't
+                # seem to build without VTK or this dependency.  I don't recall
+                # seeing this after VTK v7 though.
+                self.output.info('Injecting a find_package(Qt5Widgets) due to VTK 6')
+                file = os.path.join(self.name, 'cmakemodules/DeclareMRPTLib.cmake')
+                with open(file) as f: data = f.read()
+                data = 'find_package(Qt5Widgets)\n\n' + data
+                with open(file, 'w') as f: f.write(data)
 
         # C1027 error
         tools.replace_in_file(
@@ -173,7 +177,6 @@ class MrptConan(ConanFile):
         available to us in both the build() and package() methods
         """
 
-        vtk_major  = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
 
         cmake = CMake(self)
 
@@ -203,10 +206,17 @@ class MrptConan(ConanFile):
         cmake.definitions['BUILD_XSENS_MT3:BOOL'] = 'FALSE'
         cmake.definitions['BUILD_XSENS_MT4:BOOL'] = 'FALSE'
 
+        # PCL
         if 'pcl' in self.deps_cpp_info.deps:
             cmake.definitions['PCL_DIR:PATH']    = self.deps_cpp_info['pcl'].resdirs[0]
+
+        # OpenCV
         cmake.definitions['OpenCV_DIR:PATH']     = self.deps_cpp_info['opencv'].resdirs[0]
-        cmake.definitions['VTK_DIR:PATH']        = os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}')
+
+        # VTK
+        if 'vtk' in self.deps_cpp_info.deps:
+            vtk_major  = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
+            cmake.definitions['VTK_DIR:PATH']        = os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}')
 
         cmake.definitions['GLUT_INCLUDE_DIR:PATH']  = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include')
         cmake.definitions['GLUT_glut_LIBRARY:PATH'] = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so')
@@ -214,7 +224,7 @@ class MrptConan(ConanFile):
         if self.options.with_qt:
             cmake.definitions['Qt5Widgets_DIR:PATH'] = os.path.join(self.deps_cpp_info['qt'].rootpath, 'lib', 'cmake', 'Qt5Widgets')
 
-        cmake.definitions['ZLIB_ROOT'] = self.deps_cpp_info['zlib'].rootpath
+        cmake.definitions['ZLIB_ROOT:PATH'] = self.deps_cpp_info['zlib'].rootpath
 
         # Disabling SuiteSparse.  We (ntc) don't use it.  If we ever need it,
         # we'll supply it with a conan package rather than a system lib.
@@ -229,12 +239,14 @@ class MrptConan(ConanFile):
             #      Now that that is fixed, this exception  "if not windows 32"
             #      exception # can probably be removed.
             cmake.definitions['BUILD_ASSIMP:BOOL'] = 'FALSE'
+
         env_vars = {
             'OpenCV_ROOT_DIR': self.deps_cpp_info['opencv'].rootpath,
         }
 
         # Include our own libjpeg so that the linking across different systems
-        # isn't an issue
+        # isn't an issue.
+        # TODO I think this causes more problems then it solves
         cmake.definitions['JPEG_INCLUDE_DIR:PATH'] = os.path.join(self.deps_cpp_info['libjpeg'].rootpath, 'include')
         cmake.definitions['JPEG_LIBRARY:FILEPATH'] = os.path.join(self.deps_cpp_info['libjpeg'].rootpath, 'lib', 'libjpeg.so' if self.options['libjpeg'].shared else 'libjpeg.a')
 
