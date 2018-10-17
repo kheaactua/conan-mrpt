@@ -66,23 +66,19 @@ class MrptConan(ConanFile):
         if self.options.with_qt:
             self.requires('qt/[>=5.3.2]@ntc/stable')
 
-        # Inexplicably, PCL is sometimes not found by MRPT (the include paths
-        # aren't working despite being correct.)  So disabling PCL for now.
-        # TODO Re-enable PCL.  This may have been a pkg-config issue
-        # # Suddenly MRPT 1.2.2 no longer builds on Windows claiming an ambiguous
-        # # type PointT in PbMapMaker.cpp.  As we don't use PCL MRPT functions
-        # # right now, and MRPT has wasted an impressive amount of my time, I'm
-        # # pushing off fixing this issue.
-        # if (Version(str(self.version)) > '1.2.2') or (not 'Windows' == self.settings.os):
-        #     self.requires('pcl/[>=1.7.0]@ntc/stable')
+        if self.options.with_pcl:
+            # Suddenly MRPT 1.2.2 no longer builds on Windows claiming an ambiguous
+            # type PointT in PbMapMaker.cpp.  As we don't use PCL MRPT functions
+            # right now, and MRPT has wasted an impressive amount of my time, I'm
+            # pushing off fixing this issue.
+            if (Version(str(self.version)) <= '1.2.2') and tools.os_info.is_windows:
+                raise ConanException("MRPT <1.2.2 simply won't build with PCL on Windows.")
+            else:
+                self.requires('pcl/[>=1.7.0]@ntc/stable')
 
     def config_options(self):
         if self.settings.compiler == "Visual Studio":
-            self.options.remove("fPIC")
-
-    def configure(self):
-        if Version(str(self.version)) == '1.2.2' and 'Windows' == self.settings.os:
-            self.options['pcl'].shared = False
+            self.options.remove('fPIC')
 
     def source(self):
         ext = 'tar.gz'
@@ -226,6 +222,8 @@ class MrptConan(ConanFile):
         # PCL
         if 'pcl' in self.deps_cpp_info.deps:
             cmake.definitions['PCL_DIR:PATH']    = self.deps_cpp_info['pcl'].resdirs[0]
+        else:
+            cmake.definitions['DISABLE_PCL:BOOL'] = 'TRUE'
 
         # OpenCV
         cmake.definitions['OpenCV_DIR:PATH']     = self.deps_cpp_info['opencv'].resdirs[0]
