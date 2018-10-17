@@ -51,7 +51,7 @@ class MrptConan(ConanFile):
 
     def requirements(self):
         if self.options.with_assimp:
-            if not ('Windows' == self.settings.os and 'x86' == self.settings.arch):
+            if not (tools.os_info.is_windows and 'x86' == self.settings.arch):
                 # MRPT v1.2.2 just won't find assimp.lib on win32.
                 if 'x86' == self.settings.arch and 'Linux' == self.settings.os:
                     # On Linux 32, assimp seems to not be building with c++11, which
@@ -136,9 +136,7 @@ class MrptConan(ConanFile):
             # Minimal requirements
             # (removed from here because we provide our own: libopencv-dev,
             # libeigen3-dev, libgtest-dev)
-            pack_names = [
-                'build-essential', 'libwxgtk3.0-dev', # libwxgtk-media3.0-0
-            ]
+            pack_names = ['libwxgtk3.0-dev'] # libwxgtk-media3.0-0
 
             # Additional
             # (removed from here because we provide our own: zlib1g-dev
@@ -167,7 +165,26 @@ class MrptConan(ConanFile):
                 installer.update() # Update the package database
                 installer.install(" ".join(pack_names)) # Install the package
             except ConanException:
-                self.output.warn('Could not run system updates')
+                self.output.warn('Could not install system updates')
+
+    def build_requirements(self):
+        pack_names = None
+        if tools.os_info.linux_distro == "ubuntu":
+            pack_names = ['build-essential']
+
+            if self.settings.arch == "x86":
+                full_pack_names = []
+                for pack_name in pack_names:
+                    full_pack_names += [pack_name + ":i386"]
+                pack_names = full_pack_names
+
+        if pack_names:
+            installer = tools.SystemPackageTool()
+            try:
+                installer.update() # Update the package database
+                installer.install(" ".join(pack_names)) # Install the package
+            except ConanException:
+                self.output.warn('Could not install build requirements')
 
     def _set_up_cmake(self):
         """
