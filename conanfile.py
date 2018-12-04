@@ -35,6 +35,7 @@ class MrptConan(ConanFile):
         'fPIC':        [True, False],
         'cxx11':       [True, False],
         'build_tests': [True, False],
+        'with_pcl':    [True, False],
         'with_qt':     [True, False],
         'with_vtk':    [True, False],
         'with_assimp': [True, False],
@@ -44,6 +45,7 @@ class MrptConan(ConanFile):
         'fPIC=True',
         'cxx11=True',
         'build_tests=False',
+        'with_pcl=False',
         'with_qt=False',
         'with_vtk=False',
         'with_assimp=False',
@@ -53,7 +55,7 @@ class MrptConan(ConanFile):
         if self.options.with_assimp:
             if not (tools.os_info.is_windows and 'x86' == self.settings.arch):
                 # MRPT v1.2.2 just won't find assimp.lib on win32.
-                if 'x86' == self.settings.arch and 'Linux' == self.settings.os:
+                if 'x86' == self.settings.arch and tools.os_info.is_linux:
                     # On Linux 32, assimp seems to not be building with c++11, which
                     # causes a bunch of problems
                     self.requires('assimp/[>=3.1,<4.0]@ntc/stable')
@@ -77,7 +79,7 @@ class MrptConan(ConanFile):
                 self.requires('pcl/[>=1.7.0]@ntc/stable')
 
     def config_options(self):
-        if self.settings.compiler == "Visual Studio":
+        if 'Visual Studio' == self.settings.compiler:
             self.options.remove('fPIC')
 
     def source(self):
@@ -86,6 +88,7 @@ class MrptConan(ConanFile):
         archive_url=f'https://github.com/MRPT/mrpt/archive/{archive}'
 
         hashes = {
+            '1.5.6': '0be10fb0afddf30743c984747e7e4e09',
             '1.5.5': '3f74fecfe1a113c350332122553e1685',
             '1.4.0': 'ca36688b2512a21dac27aadca34153ce',
             '1.2.2': '074cc4608515927811dec3d0744c75b6',
@@ -248,7 +251,7 @@ class MrptConan(ConanFile):
         # Disable wxwidgets
         cmake.definitions['DISABLE_WXWIDGETS:BOOL'] = 'OFF'
 
-        if not ('Windows' == self.settings.os and 'x86' == self.settings.arch):
+        if not (tools.os_info.is_windows and 'x86' == self.settings.arch):
             # MRPT v1.2.2 just won't find assimp.lib on win32.
             # TODO I suspect this was an issue with assimp's pkg-config file.
             #      Now that that is fixed, this exception  "if not windows 32"
@@ -301,7 +304,7 @@ class MrptConan(ConanFile):
         cmake.install()
 
         # Fix up the CMake Find Script MRPT generated
-        if 'Windows' == platform.system():
+        if tools.os_info.i=s_windows:
             cmake_src_file = os.path.join(self.build_folder, 'MRPTConfig.cmake')
         else:
             cmake_src_file = os.path.join(self.build_folder, 'unix-install', 'MRPTConfig.cmake')
@@ -332,7 +335,7 @@ class MrptConan(ConanFile):
     def mrpt_cmake_rel_dir(self):
         """ Relative directory of the published (packaged) MRPTConfig.cmake file """
 
-        if 'Windows' == platform.system():
+        if tools.os_info.is_windows:
             # On Windows, this CMake file is in a different place
             return ''
         else:
