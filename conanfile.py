@@ -10,12 +10,9 @@ import conans.client.build.compiler_flags as cf
 
 
 class MrptConan(ConanFile):
-    """
-    Tested with versions 1.2.2, 1.4.0, 1.5.5.
-    """
-
     name        = 'mrpt'
     license     = 'BSD'
+    version     = '1.5.6'
     url         = 'http://www.mrpt.org/'
     description = 'The Mobile Robot Programming Toolkit (MRPT) '
     settings    = 'os', 'compiler', 'build_type', 'arch', 'arch_build'
@@ -26,9 +23,9 @@ class MrptConan(ConanFile):
         'zlib/[>=1.2.11]@conan/stable',
         'flann/[>=1.6.8]@ntc/stable',
         'boost/[>1.46]@ntc/stable',
-        'libjpeg/9b@lasote/stable', # Doesn't seem to actually be used (at least not linked to), and libjpeg is in the system reqs
         'helpers/0.3@ntc/stable',
     )
+    hash = '0be10fb0afddf30743c984747e7e4e09'
 
     options = {
         'shared':      [True, False],
@@ -87,24 +84,17 @@ class MrptConan(ConanFile):
         archive=f'{self.version}.{ext}'
         archive_url=f'https://github.com/MRPT/mrpt/archive/{archive}'
 
-        hashes = {
-            '1.5.6': '0be10fb0afddf30743c984747e7e4e09',
-            '1.5.5': '3f74fecfe1a113c350332122553e1685',
-            '1.4.0': 'ca36688b2512a21dac27aadca34153ce',
-            '1.2.2': '074cc4608515927811dec3d0744c75b6',
-        }
-
         local_copy = os.path.join('/tmp', f'mrpt-{archive}')
         if os.path.exists(local_copy):
             shutil.copy(local_copy, os.path.join(self.source_folder, archive))
         else:
             tools.download(url=archive_url, filename=archive)
-            tools.check_md5(archive, hashes[self.version])
+            tools.check_md5(archive, self.hash)
 
         tools.unzip(archive)
         shutil.move(f'mrpt-{self.version}', self.name)
 
-        if 'vtk' in self.deps_cpp_info.deps:
+        if self.options.with_vtk and 'vtk' in self.deps_cpp_info.deps:
             vtk_release = int(self.deps_cpp_info['vtk'].version.split('.')[0])
             if vtk_release < 7:
                 # Need to add find_package(Qt5Widgets).  I think the HEAD of OpenCV
@@ -232,9 +222,11 @@ class MrptConan(ConanFile):
         cmake.definitions['OpenCV_DIR:PATH']     = self.deps_cpp_info['opencv'].resdirs[0]
 
         # VTK
-        if 'vtk' in self.deps_cpp_info.deps:
+        if self.options.with_vtk and 'vtk' in self.deps_cpp_info.deps:
             vtk_major  = '.'.join(self.deps_cpp_info['vtk'].version.split('.')[:2])
             cmake.definitions['VTK_DIR:PATH']        = os.path.join(self.deps_cpp_info['vtk'].rootpath, 'lib', 'cmake', f'vtk-{vtk_major}')
+        else:
+            cmake.definitions['DISABLE_VTK:BOOL'] = 'TRUE'
 
         cmake.definitions['GLUT_INCLUDE_DIR:PATH']  = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'include')
         cmake.definitions['GLUT_glut_LIBRARY:PATH'] = os.path.join(self.deps_cpp_info['freeglut'].rootpath, 'lib', 'libglut.so')
@@ -262,11 +254,6 @@ class MrptConan(ConanFile):
             'OpenCV_ROOT_DIR': self.deps_cpp_info['opencv'].rootpath,
         }
 
-        # Include our own libjpeg so that the linking across different systems
-        # isn't an issue.
-        # TODO I think this causes more problems then it solves
-        cmake.definitions['JPEG_INCLUDE_DIR:PATH'] = os.path.join(self.deps_cpp_info['libjpeg'].rootpath, 'include')
-        cmake.definitions['JPEG_LIBRARY:FILEPATH'] = os.path.join(self.deps_cpp_info['libjpeg'].rootpath, 'lib', 'libjpeg.so' if self.options['libjpeg'].shared else 'libjpeg.a')
 
         return cmake, env_vars
 
@@ -296,7 +283,6 @@ class MrptConan(ConanFile):
             cmake.build()
 
     def package(self):
-
         # Use cmake's install target
         cmake, env_vars = self._set_up_cmake()
         with tools.environment_append(env_vars):
@@ -304,7 +290,7 @@ class MrptConan(ConanFile):
         cmake.install()
 
         # Fix up the CMake Find Script MRPT generated
-        if tools.os_info.i=s_windows:
+        if tools.os_info.is_windows:
             cmake_src_file = os.path.join(self.build_folder, 'MRPTConfig.cmake')
         else:
             cmake_src_file = os.path.join(self.build_folder, 'unix-install', 'MRPTConfig.cmake')
