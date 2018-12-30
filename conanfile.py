@@ -115,6 +115,13 @@ class MrptConan(ConanFile):
             replace='/Zm300',
         )
 
+        if tools.os_info.is_windows and 'Visual Studio' == self.settings.compiler and Version(str(self.settings.compiler.version)) <= '12':
+            tools.replace_in_file(
+                file_path=os.path.join(self.name, 'libs', 'base', 'include', 'mrpt', 'utils', 'pimpl.h'),
+                search=' noexcept',
+                replace=''
+            )
+
         if self.settings.compiler == 'gcc':
             import cmake_helpers
             cmake_helpers.wrapCMakeFile(os.path.join(self.source_folder, self.name), output_func=self.output.info)
